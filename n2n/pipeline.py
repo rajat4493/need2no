@@ -1,17 +1,42 @@
 from pathlib import Path
-from typing import Optional
+from typing import Tuple
 
 from n2n import DEFAULT_QUALITY_THRESHOLD
 from n2n.detectors.bank_statement_uk import detect_pii_uk_bank_statement
+from n2n.extractors.pdf_text import extract_text_with_quality
 from n2n.models import RedactionOutcome
-from n2n.parsers.pdf_text_extractor import extract_text_with_quality
 from n2n.renderers.pdf_renderer import apply_redactions
+from n2n.utils.config_loader import load_global_config, load_profile_config
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def redact_file(input_path: Path) -> RedactionOutcome:
+def _load_configs(config_dir: Path) -> Tuple[dict, dict]:
+    defaults = load_global_config(config_dir)
+    profile = load_profile_config(config_dir, defaults["country_pack"], defaults["profile"])
+    return defaults, profile
+
+
+def _get_threshold(defaults: dict) -> float:
+    threshold = defaults.get("quality_threshold", DEFAULT_QUALITY_THRESHOLD)
+    try:
+        return float(threshold)
+    except (TypeError, ValueError):
+        return DEFAULT_QUALITY_THRESHOLD
+
+
+def _get_output_suffix(defaults: dict) -> str:
+    output = defaults.get("output", {})
+    suffix = output.get("suffix")
+    return str(suffix) if suffix else "_redacted"
+
+
+def run_pipeline(input_path: Path, config_dir: Path) -> RedactionOutcome:
+    defaults, _profile = _load_configs(config_dir)
+
     extraction = extract_text_with_quality(input_path)
 
-    if extraction.quality_score < DEFAULT_QUALITY_THRESHOLD:
+    if extraction.quality_score < _get_threshold(defaults):
         return RedactionOutcome(
             input_path=input_path,
             output_path=None,
@@ -20,8 +45,6 @@ def redact_file(input_path: Path) -> RedactionOutcome:
         )
 
     detections = detect_pii_uk_bank_statement(extraction)
-
-    # Strict rule: only redact if we have at least one detection with confidence == 1.0
     strict_detections = [d for d in detections if d.confidence >= 1.0]
 
     if not strict_detections:
@@ -32,7 +55,8 @@ def redact_file(input_path: Path) -> RedactionOutcome:
             reason="no_pii_found",
         )
 
-    output_path = input_path.with_name(input_path.stem + "_redacted.pdf")
+    suffix = _get_output_suffix(defaults)
+    output_path = input_path.with_name(f"{input_path.stem}{suffix}.pdf")
 
     apply_redactions(
         input_pdf=input_path,
@@ -46,3 +70,9 @@ def redact_file(input_path: Path) -> RedactionOutcome:
         redactions_applied=len(strict_detections),
         reason=None,
     )
+
+
+def redact_file(input_path: Path) -> RedactionOutcome:
+    """Backward-compatible helper that uses the project config directory."""
+
+    return run_pipeline(input_path, PROJECT_ROOT)

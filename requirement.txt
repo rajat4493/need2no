@@ -1,3 +1,5 @@
 typer 
 pdfplumber 
 pymupdf
+pyyaml
+

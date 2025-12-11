@@ -1,0 +1,33 @@
+doc_type: "bank_statement_uk"
+extractor: "pdf_text"
+regions:
+  header_block:
+    page: 0
+    x_range: [0.55, 1.0]
+    y_range: [0.65, 1.0]
+
+fields:
+  - id: "account_name"
+    category: "customer_identity"
+    primitive: "name_header"
+    region: "header_block"
+
+  - id: "sort_code"
+    category: "bank_identifiers"
+    primitive: "uk_sort_code"
+    context_keywords: ["sort code", "sort-code", "sc"]
+
+  - id: "account_number"
+    category: "bank_identifiers"
+    primitive: "uk_account_number_8d"
+    context_keywords: ["account number", "account no", "a/c no", "acc no"]
+
+  - id: "iban"
+    category: "bank_identifiers"
+    primitive: "iban_gb"
+    context_keywords: ["iban"]
+
+  - id: "card_number"
+    category: "card_numbers"
+    primitive: "card_16"
+    context_keywords: ["card number", "debit card", "credit card", "card ending"]
