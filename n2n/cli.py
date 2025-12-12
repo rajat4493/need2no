@@ -1,6 +1,8 @@
 from pathlib import Path
+import os
 
 import typer
+import uvicorn
 
 from n2n.pipeline import run_highlight, run_pipeline
 
@@ -93,6 +95,27 @@ def highlight(
         f"[OK] Highlighted {outcome.redactions_applied} PII spans.\n"
         f"     Output: {outcome.output_path}"
     )
+
+
+@app.command("n2n-serve")
+def serve(
+    host: str = typer.Option("0.0.0.0", "--host", help="Host interface for the API server."),
+    port: int = typer.Option(8000, "--port", help="Port for the API server."),
+    config_dir: str = typer.Option(
+        ".",
+        "--config-dir",
+        "-c",
+        help="Base directory containing the config/ folder.",
+    ),
+):
+    """
+    Start the FastAPI server that exposes /redact and /highlight endpoints.
+    """
+
+    base_dir = Path(config_dir).resolve()
+    os.environ["N2N_CONFIG_DIR"] = str(base_dir)
+
+    uvicorn.run("n2n.api_server:app", host=host, port=port, reload=False)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,24 @@
+[project]
+name = "n2n-redactor"
+version = "0.0.1"
+description = "Local-first UK bank statement redaction CLI + API."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+dependencies = [
+    "pdfplumber>=0.11.0",
+    "PyMuPDF>=1.23.0",
+    "typer>=0.9.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.30.0",
+    "PyYAML>=6.0.0",
+]
+
+[project.scripts]
+n2n-redact = "n2n.cli:redact"
+n2n-highlight = "n2n.cli:highlight"
+n2n-serve = "n2n.cli:serve"
+
+[build-system]
+requires = ["setuptools>=67.0", "wheel"]
+build-backend = "setuptools.build_meta"

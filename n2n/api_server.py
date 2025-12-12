@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Literal
@@ -11,6 +12,7 @@ from fastapi.responses import JSONResponse, Response
 from n2n.pipeline import run_highlight, run_pipeline
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_DIR = Path(os.environ.get("N2N_CONFIG_DIR", PROJECT_ROOT)).resolve()
 
 app = FastAPI(title="N2N Local API", version="0.0.1")
 
@@ -41,7 +43,7 @@ def _process_upload(upload: UploadFile, mode: Literal["redact", "highlight"]):
     with TemporaryDirectory() as tmp_dir_str:
         tmp_dir = Path(tmp_dir_str)
         input_path = _save_upload_to_temp(upload, tmp_dir)
-        outcome = _run_engine(mode, input_path, PROJECT_ROOT)
+        outcome = _run_engine(mode, input_path, CONFIG_DIR)
 
         if outcome.reason:
             return JSONResponse(
@@ -67,6 +69,11 @@ async def redact(file: UploadFile = File(...)):
 @app.post("/highlight")
 async def highlight(file: UploadFile = File(...)):
     return _process_upload(file, "highlight")
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
 __all__ = ["app"]

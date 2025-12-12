@@ -17,8 +17,8 @@ def _print_detections(detections) -> None:
     print("Detections:")
     for det in detections:
         print(
-            f"- field={det.field_id} primitive={det.primitive} page={det.span.page_index} "
-            f"text={det.span.text!r} context={det.context!r}"
+            f"page={det.span.page_index} field_id={det.field_id} "
+            f"primitive={det.primitive} text={det.span.text!r} context={det.context!r}"
         )
 
 
@@ -31,24 +31,19 @@ def main() -> None:
         default="highlight",
         help="Whether to run the redaction or highlight output",
     )
-    parser.add_argument(
-        "--config-dir",
-        default=".",
-        help="Base directory containing the config/ folder",
-    )
     args = parser.parse_args()
 
     pdf_path = Path(args.file).expanduser().resolve()
     if not pdf_path.exists():
         raise SystemExit(f"File not found: {pdf_path}")
 
-    base_dir = Path(args.config_dir).expanduser().resolve()
+    base_dir = Path(".").resolve()
 
     defaults = load_global_config(base_dir)
     profile = load_profile_config(base_dir, defaults["country_pack"], defaults["profile"])
 
     extraction = extract_text_with_quality(pdf_path)
-    print(f"Quality score: {extraction.quality_score:.2f}")
+    print(f"quality_score={extraction.quality_score:.2f}")
 
     detections = detect_pii_uk_bank_statement(extraction, profile)
     strict = [d for d in detections if d.confidence >= 1.0]
