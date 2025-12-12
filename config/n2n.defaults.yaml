@@ -1,4 +1,5 @@
-quality_threshold: 0.40
+quality_threshold: 0.00
+extractor_mode: "auto"
 country_pack: "uk"
 profile: "bank_statement"
 pii_categories:

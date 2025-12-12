@@ -1,5 +1,7 @@
 import re
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+
+import pdfplumber
 
 from n2n.models import DetectionResult, ExtractionResult, PiiCategory, TextSpan
 from n2n.primitives import register_primitive
@@ -20,7 +22,7 @@ def _iter_lines(extraction: ExtractionResult) -> Iterable[Tuple[int, str]]:
 
 def _line_has_context(line: str, keywords: Sequence[str]) -> bool:
     if not keywords:
-        return True
+        return False
     lower = line.lower()
     return any(keyword in lower for keyword in keywords)
 
@@ -33,24 +35,114 @@ def _build_span(page_index: int, match_text: str) -> TextSpan:
     )
 
 
+def _extract_region_lines(extraction: ExtractionResult, region: Dict[str, object]) -> List[Tuple[int, str]]:
+    page_index = int(region.get("page", 0))
+    if page_index >= len(extraction.pages):
+        return []
+
+    with pdfplumber.open(str(extraction.file_path)) as pdf:
+        if page_index >= len(pdf.pages):
+            return []
+
+        page = pdf.pages[page_index]
+        x_range = region.get("x_range", (0.0, 1.0))
+        y_range = region.get("y_range", (0.0, 1.0))
+        bbox = (
+            float(x_range[0]) * page.width,
+            float(y_range[0]) * page.height,
+            float(x_range[1]) * page.width,
+            float(y_range[1]) * page.height,
+        )
+
+        cropped = page.crop(bbox)
+        words = cropped.extract_words() or []
+        if not words:
+            return []
+
+        sorted_words = sorted(words, key=lambda w: (w["top"], w["x0"]))
+        lines: List[List[dict]] = []
+        current_line: List[dict] = []
+        current_top = None
+
+        for word in sorted_words:
+            top = float(word["top"])
+            if current_line and current_top is not None and abs(top - current_top) > 2.0:
+                lines.append(current_line)
+                current_line = [word]
+                current_top = top
+            else:
+                current_line.append(word)
+                current_top = top if current_top is None else current_top
+
+        if current_line:
+            lines.append(current_line)
+
+        results: List[Tuple[int, str]] = []
+        for line_words in lines:
+            text = " ".join((w.get("text") or "").strip() for w in line_words if w.get("text"))
+            text = text.strip()
+            if text:
+                results.append((page_index, text))
+
+        return results
+
+
+def _resolve_region_bounds(field_cfg: Dict[str, object]) -> Optional[Dict[str, object]]:
+    region_cfg = field_cfg.get("region_bounds") or field_cfg.get("region_def")
+    region_value = field_cfg.get("region")
+
+    if isinstance(region_value, dict):
+        region_cfg = region_value
+    elif isinstance(region_value, str):
+        # TODO: map region name to coordinates from profile config.
+        pass
+
+    return region_cfg
+
+
+def _candidate_lines(extraction: ExtractionResult, field_cfg: Dict[str, object]) -> Iterable[Tuple[int, str]]:
+    region = _resolve_region_bounds(field_cfg)
+    if region:
+        return _extract_region_lines(extraction, region)
+    return _iter_lines(extraction)
+
+
+def _require_context_keywords(field_cfg: Dict[str, object]) -> List[str]:
+    raw_keywords = field_cfg.get("context_keywords") or []
+    keywords = [str(k).lower() for k in raw_keywords if str(k).strip()]
+    return keywords
+
+
+def _account_number_filter(line: str, match: re.Match[str]) -> bool:
+    start, end = match.span()
+    snippet = line[max(0, start - 1) : min(len(line), end + 1)]
+    noise_chars = {".", ",", "£", "$"}
+    return not any(ch in snippet for ch in noise_chars)
+
+
 def _detect_pattern(
     extraction: ExtractionResult,
     pattern: re.Pattern[str],
     field_cfg: Dict[str, object],
     primitive: str,
     default_category: PiiCategory,
+    match_filter: Optional[Callable[[str, re.Match[str]], bool]] = None,
 ) -> List[DetectionResult]:
     detections: List[DetectionResult] = []
     field_id = str(field_cfg["id"])
-    keywords = [str(k).lower() for k in field_cfg.get("context_keywords", [])]
+    keywords = _require_context_keywords(field_cfg)
+    if not keywords:
+        return detections
     raw_category = field_cfg.get("category")
     category = raw_category if isinstance(raw_category, PiiCategory) else default_category
 
-    for page_index, line in _iter_lines(extraction):
+    for page_index, line in _candidate_lines(extraction, field_cfg):
         if not _line_has_context(line, keywords):
             continue
 
         for match in pattern.finditer(line):
+            if match_filter and not match_filter(line, match):
+                continue
             detections.append(
                 DetectionResult(
                     field_id=field_id,
@@ -90,6 +182,7 @@ def detect_uk_account_number_8d(
         field_cfg=field_cfg,
         primitive="uk_account_number_8d",
         default_category=PiiCategory.BANK_IDENTIFIERS,
+        match_filter=_account_number_filter,
     )
 
 

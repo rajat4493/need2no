@@ -9,6 +9,7 @@ class PiiCategory(str, Enum):
     BANK_IDENTIFIERS = "bank_identifiers"
     CARD_NUMBERS = "card_numbers"
     TRANSACTION_DETAILS = "transaction_details"
+    GOV_IDENTIFIERS = "gov_identifiers"
 
 
 @dataclass
