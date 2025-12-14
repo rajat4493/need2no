@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+import re
 from typing import Dict, List, Tuple
 
 import pdfplumber
 
 from n2n.models import DetectionResult, ExtractionResult, PiiCategory, TextSpan
 from n2n.primitives import register_primitive
+
+CURRENCY_TOKEN_RE = re.compile(
+    r"""^[£]?\s*
+        -?\d{1,3}
+        (,\d{3})*
+        (\.\d{2})?
+        \s*$""",
+    re.VERBOSE,
+)
+NUMERIC_CHARS = set("0123456789.,-£$()")
 
 
 def _normalize_region_bbox(region: Dict[str, object], page_width: float, page_height: float) -> Tuple[float, float, float, float]:
@@ -60,7 +71,7 @@ def detect_name_header(
     extraction: ExtractionResult,
     field_cfg: Dict[str, object],
 ) -> List[DetectionResult]:
-    region_def = field_cfg.get("region_def")
+    region_def = field_cfg.get("region_bounds") or field_cfg.get("region_def") or field_cfg.get("region")
     if not region_def:
         return []
 
@@ -90,7 +101,7 @@ def detect_name_header(
         words = cropped.extract_words() or []
         for line_words in _group_words_by_line(words):
             text = _line_text(line_words).strip()
-            if not text:
+            if not _is_valid_header_line(text):
                 continue
 
             span_bbox = _line_bbox(line_words)
@@ -109,7 +120,35 @@ def detect_name_header(
                 )
             )
 
+            if field_id == "account_name":
+                break
+
     return detections
+
+
+def _is_valid_header_line(text: str) -> bool:
+    if not text:
+        return False
+
+    if not any(ch.isalpha() for ch in text):
+        return False
+
+    tokens = text.split()
+    currency_hits = sum(1 for tok in tokens if _looks_like_currency(tok))
+    if currency_hits >= 2:
+        return False
+
+    stripped = "".join(ch for ch in text if not ch.isspace())
+    if stripped:
+        numeric_chars = sum(1 for ch in stripped if ch.isdigit() or ch in NUMERIC_CHARS)
+        if numeric_chars / len(stripped) > 0.6:
+            return False
+
+    return True
+
+
+def _looks_like_currency(token: str) -> bool:
+    return bool(CURRENCY_TOKEN_RE.match(token.strip()))
 
 
 __all__ = ["detect_name_header"]

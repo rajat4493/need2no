@@ -20,6 +20,9 @@ n2n-redact = "n2n.cli:redact"
 n2n-highlight = "n2n.cli:highlight"
 n2n-serve = "n2n.cli:serve"
 
+[tool.setuptools]
+packages = ["n2n"]
+
 [build-system]
 requires = ["setuptools>=67.0", "wheel"]
 build-backend = "setuptools.build_meta"

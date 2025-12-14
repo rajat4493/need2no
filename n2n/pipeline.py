@@ -1,6 +1,7 @@
+import logging
+import re
 from pathlib import Path
 from typing import List, Tuple
-import re
 
 from n2n import DEFAULT_QUALITY_THRESHOLD
 from n2n.detectors.bank_statement_uk import detect_pii_uk_bank_statement
@@ -12,6 +13,7 @@ from n2n.renderers.pdf_mupdf import apply_redactions
 from n2n.utils.config_loader import load_global_config, load_profile_config
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+LOGGER = logging.getLogger(__name__)
 CURRENCY_RE = re.compile(
     r"""^[£]?\s*
         -?\d{1,3}
@@ -88,7 +90,9 @@ def _prepare_detections(
 
     detections = detect_pii_uk_bank_statement(extraction, profile)
     strict_detections = [d for d in detections if d.confidence >= 1.0]
-    strict_detections = _precision_filter(strict_detections)
+    strict_detections, dropped = _precision_filter(strict_detections)
+    if dropped:
+        LOGGER.info("Precision filter dropped %s detections", dropped)
 
     if not strict_detections:
         return defaults, [], "no_pii_found"
@@ -151,16 +155,18 @@ def redact_file(input_path: Path) -> RedactionOutcome:
     return run_pipeline(input_path, PROJECT_ROOT)
 
 
-def _precision_filter(detections: List[DetectionResult]) -> List[DetectionResult]:
+def _precision_filter(detections: List[DetectionResult]) -> Tuple[List[DetectionResult], int]:
     filtered: List[DetectionResult] = []
+    dropped = 0
 
     for det in detections:
         text = (det.span.text or "").strip()
         if det.category == PiiCategory.BANK_IDENTIFIERS and looks_like_currency(text):
+            dropped += 1
             continue
         filtered.append(det)
 
-    return filtered
+    return filtered, dropped
 
 
 def looks_like_currency(text: str) -> bool:

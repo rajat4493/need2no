@@ -1,0 +1,4 @@
+[console_scripts]
+n2n-highlight = n2n.cli:highlight
+n2n-redact = n2n.cli:redact
+n2n-serve = n2n.cli:serve

@@ -55,36 +55,9 @@ def _extract_region_lines(extraction: ExtractionResult, region: Dict[str, object
         )
 
         cropped = page.crop(bbox)
-        words = cropped.extract_words() or []
-        if not words:
-            return []
-
-        sorted_words = sorted(words, key=lambda w: (w["top"], w["x0"]))
-        lines: List[List[dict]] = []
-        current_line: List[dict] = []
-        current_top = None
-
-        for word in sorted_words:
-            top = float(word["top"])
-            if current_line and current_top is not None and abs(top - current_top) > 2.0:
-                lines.append(current_line)
-                current_line = [word]
-                current_top = top
-            else:
-                current_line.append(word)
-                current_top = top if current_top is None else current_top
-
-        if current_line:
-            lines.append(current_line)
-
-        results: List[Tuple[int, str]] = []
-        for line_words in lines:
-            text = " ".join((w.get("text") or "").strip() for w in line_words if w.get("text"))
-            text = text.strip()
-            if text:
-                results.append((page_index, text))
-
-        return results
+        region_text = cropped.extract_text() or ""
+        lines = [line.strip() for line in region_text.splitlines() if line.strip()]
+        return [(page_index, line) for line in lines]
 
 
 def _resolve_region_bounds(field_cfg: Dict[str, object]) -> Optional[Dict[str, object]]:

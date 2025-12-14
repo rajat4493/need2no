@@ -184,22 +184,11 @@ def _extract_region_lines(extraction: ExtractionResult, region_def: Optional[Dic
             float(y_range[1]) * page.height,
         )
         cropped = page.crop(bbox)
-        words = cropped.extract_words() or []
-
-        if not words:
-            return []
-
-        lines: Dict[float, List[dict]] = {}
-        for word in words:
-            top = float(word["top"])
-            lines.setdefault(top, []).append(word)
-
-        for top in sorted(lines.keys()):
-            line_words = lines[top]
-            text = " ".join((w.get("text") or "").strip() for w in line_words if w.get("text"))
-            if not text:
-                continue
-            results.append((page_index, text))
+        region_text = cropped.extract_text() or ""
+        for line in region_text.splitlines():
+            text = line.strip()
+            if text:
+                results.append((page_index, text))
 
     return results
 
