@@ -1,0 +1,14 @@
+{
+  "pack": "global.pci_lite.v1",
+  "decision": "CONFIRMED",
+  "reasons": [],
+  "detections": [],
+  "artifacts": {
+    "input_pdf": "cc/statement_002.pdf",
+    "highlight_pdf": "cc/statement_002_highlighted.pdf",
+    "redacted_pdf": null,
+    "report_json": "cc/statement_002_global.pci_lite.v1_report.json",
+    "ocr_text": "cc/statement_002_ocr_text.txt",
+    "ocr_spans": "cc/statement_002_ocr_spans.json"
+  }
+}

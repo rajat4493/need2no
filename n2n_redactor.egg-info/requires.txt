@@ -3,5 +3,16 @@ PyMuPDF>=1.23.0
 typer>=0.9.0
 fastapi>=0.110.0
 uvicorn>=0.30.0
-PyYAML>=6.0.0
 pytesseract>=0.3.10
+Pillow>=10.0.0
+opencv-python>=4.8.0
+ultralytics>=8.1.0
+
+[dev]
+pytest>=8.0.0
+
+[easy]
+easyocr>=1.7.1
+
+[paddle]
+paddleocr>=2.8.0

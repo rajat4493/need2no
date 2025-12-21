@@ -1,0 +1,195 @@
+{
+  "pack_id": "global.card_photo.v1",
+  "decision": "REVIEW",
+  "reasons": [
+    {
+      "code": "PAN_SUSPECT",
+      "description": "PAN-like structure detected but not validated."
+    },
+    {
+      "code": "OCCLUSION",
+      "description": "Potential occlusion or fingers detected."
+    }
+  ],
+  "detections": [
+    {
+      "field_id": "card_pan",
+      "text": "**** **** **** 9010",
+      "raw": "4000123456789010",
+      "bbox": [
+        187.89971923828125,
+        292.286376953125,
+        771.5939331054688,
+        429.1286926269531
+      ],
+      "page": 0,
+      "source": "roi_ocr",
+      "validators": [
+        "regex",
+        "roi"
+      ],
+      "severity": "suspicion"
+    }
+  ],
+  "artifacts": {
+    "input": "pngimg.png",
+    "highlight_pdf": "out/pngimg_highlight.pdf",
+    "redacted_pdf": null,
+    "report_json": "out/pngimg_report.json",
+    "ocr_text": "out/pngimg_ocr_text.txt",
+    "ocr_spans": "out/pngimg_ocr_spans.json"
+  },
+  "engine_version": "0.1.0",
+  "suggested_redactions": [],
+  "action": null,
+  "trace": {
+    "input": {
+      "input": {
+        "path": "/Users/rpandey/DevHub/N2N/pngimg.png",
+        "render_dpi": 350,
+        "page_count": 1
+      },
+      "pages": [
+        {
+          "index": 0,
+          "width": 960,
+          "height": 719,
+          "scale": 1.0,
+          "source": "image"
+        }
+      ]
+    },
+    "vision": {
+      "weights_path": "n2n_assets/models/card_id_yolo.pt",
+      "model_used": false,
+      "model_reason": "weights_missing",
+      "pages": [
+        {
+          "index": 0,
+          "width": 960,
+          "height": 719,
+          "box_count": 0,
+          "boxes": []
+        }
+      ]
+    },
+    "preprocess": [
+      {
+        "page": 0,
+        "card_candidate_source": "contour",
+        "blur_score": 1176.0247687358685,
+        "skew_angle": 0.0,
+        "used_threshold": true,
+        "threshold_method": "adaptive_gaussian",
+        "roi_bbox": [
+          46,
+          87,
+          912,
+          633
+        ],
+        "used_warp": true,
+        "quality": {
+          "skin_ratio": 0.0287,
+          "dark_ratio": 0.1213,
+          "bright_ratio": 0.0216,
+          "occlusion_ratio": 0.1213,
+          "occlusion_suspected": true
+        }
+      }
+    ],
+    "ocr": [
+      {
+        "page": 0,
+        "pan": {
+          "page": 0,
+          "bbox": [
+            187.9,
+            292.29,
+            771.59,
+            429.13
+          ],
+          "stats": {
+            "avg_conf": 1.0
+          },
+          "text_preview": "#### #### #### ####",
+          "engine": "apple_vision"
+        },
+        "expiry": {
+          "page": 0,
+          "bbox": [
+            516.1,
+            398.57,
+            794.64,
+            540.07
+          ],
+          "stats": {
+            "avg_conf": 1.0
+          },
+          "text_preview": "VISA",
+          "engine": "apple_vision"
+        },
+        "attempts": {
+          "pan": [
+            {
+              "engine": "apple_vision",
+              "success": true,
+              "text_preview": "4000 1234 5678 9010",
+              "avg_conf": 1.0,
+              "elapsed_ms": 306.51
+            },
+            {
+              "engine": "paddleocr",
+              "success": false,
+              "error": "No models are available for the language 'eng' and OCR version None.",
+              "elapsed_ms": 0.07
+            },
+            {
+              "engine": "tesseract",
+              "success": true,
+              "text_preview": "",
+              "avg_conf": 0.0,
+              "elapsed_ms": 125.91
+            }
+          ],
+          "expiry": [
+            {
+              "engine": "apple_vision",
+              "success": true,
+              "text_preview": "VISA",
+              "avg_conf": 1.0,
+              "elapsed_ms": 260.61
+            },
+            {
+              "engine": "paddleocr",
+              "success": false,
+              "error": "No models are available for the language 'eng' and OCR version None.",
+              "elapsed_ms": 0.07
+            },
+            {
+              "engine": "tesseract",
+              "success": true,
+              "text_preview": "",
+              "avg_conf": 0.0,
+              "elapsed_ms": 85.4
+            }
+          ]
+        }
+      }
+    ],
+    "validators": {
+      "pan_hits": 0,
+      "pan_suspicions": 1,
+      "expiry_hits": 0,
+      "occlusion_flags": 1,
+      "card_candidate_present": true
+    },
+    "ocr_backend_mode": "auto",
+    "post_redaction": {
+      "checked": 0,
+      "hits_remaining": 0
+    },
+    "ocr_backends_used": [
+      "apple_vision"
+    ]
+  }
+}

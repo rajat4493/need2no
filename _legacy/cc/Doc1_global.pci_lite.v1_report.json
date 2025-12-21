@@ -1,0 +1,19 @@
+{
+  "pack": "global.pci_lite.v1",
+  "decision": "REJECTED",
+  "reasons": [
+    {
+      "code": "EXTRACTION_EMPTY",
+      "description": "Extractor produced no spans or insufficient characters to inspect the document safely."
+    }
+  ],
+  "detections": [],
+  "artifacts": {
+    "input_pdf": "cc/Doc1.pdf",
+    "highlight_pdf": null,
+    "redacted_pdf": null,
+    "report_json": "cc/Doc1_global.pci_lite.v1_report.json",
+    "ocr_text": "cc/Doc1_ocr_text.txt",
+    "ocr_spans": "cc/Doc1_ocr_spans.json"
+  }
+}

@@ -1,3 +1,4 @@
-__version__ = "0.0.1"
+__all__ = ["__version__", "ENGINE_VERSION"]
 
-DEFAULT_QUALITY_THRESHOLD = 0.50
+__version__ = "0.1.0"
+ENGINE_VERSION = __version__

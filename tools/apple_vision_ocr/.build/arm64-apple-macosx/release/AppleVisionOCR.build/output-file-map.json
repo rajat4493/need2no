@@ -1,0 +1,13 @@
+{
+  "": {
+    "dependencies": "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/AppleVisionOCR.d",
+    "object": "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/AppleVisionOCR.o",
+    "swift-dependencies": "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/master.swiftdeps"
+  },
+  "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/Sources/AppleVisionOCR/main.swift": {
+    "object": "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/main.swift.o",
+    "swiftmodule": "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/main.swiftdeps",
+    "diagnostics": "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/main.dia"
+  }
+}

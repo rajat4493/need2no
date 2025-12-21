@@ -1,0 +1,66 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "AppleVisionOCR-arm64-apple-macosx26.0-release.exe": ["<AppleVisionOCR-arm64-apple-macosx26.0-release.exe>"]
+  "AppleVisionOCR-arm64-apple-macosx26.0-release.module": ["<AppleVisionOCR-arm64-apple-macosx26.0-release.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "main": ["<AppleVisionOCR-arm64-apple-macosx26.0-release.exe>","<AppleVisionOCR-arm64-apple-macosx26.0-release.module>"]
+  "test": ["<AppleVisionOCR-arm64-apple-macosx26.0-release.exe>","<AppleVisionOCR-arm64-apple-macosx26.0-release.module>"]
+default: "main"
+nodes:
+  "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/Sources/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+commands:
+  "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/Sources/AppleVisionOCR/main.swift"]
+    outputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/sources"]
+    description: "Write auxiliary file /Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/sources"
+
+  "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/main.swift.o"]
+    outputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.product/Objects.LinkFileList"
+
+  "/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Library/Developer/CommandLineTools/usr/bin/swiftc"]
+    outputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt"
+
+  "<AppleVisionOCR-arm64-apple-macosx26.0-release.exe>":
+    tool: phony
+    inputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR"]
+    outputs: ["<AppleVisionOCR-arm64-apple-macosx26.0-release.exe>"]
+
+  "<AppleVisionOCR-arm64-apple-macosx26.0-release.module>":
+    tool: phony
+    inputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/main.swift.o","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/Modules/AppleVisionOCR.swiftmodule"]
+    outputs: ["<AppleVisionOCR-arm64-apple-macosx26.0-release.module>"]
+
+  "C.AppleVisionOCR-arm64-apple-macosx26.0-release.exe":
+    tool: shell
+    inputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/main.swift.o","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.product/Objects.LinkFileList"]
+    outputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR"]
+    description: "Linking ./.build/arm64-apple-macosx/release/AppleVisionOCR"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-L","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release","-o","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR","-module-name","AppleVisionOCR","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-dead_strip","-Xlinker","-alias","-Xlinker","_AppleVisionOCR_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.product/Objects.LinkFileList","-target","arm64-apple-macosx13.0","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g"]
+
+  "C.AppleVisionOCR-arm64-apple-macosx26.0-release.module":
+    tool: shell
+    inputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/Sources/AppleVisionOCR/main.swift","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/swift-version--1AB21518FC5DEDBE.txt","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/sources"]
+    outputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/main.swift.o","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/Modules/AppleVisionOCR.swiftmodule"]
+    description: "Compiling Swift Module 'AppleVisionOCR' (1 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","AppleVisionOCR","-emit-dependencies","-emit-module","-emit-module-path","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/Modules/AppleVisionOCR.swiftmodule","-output-file-map","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/output-file-map.json","-whole-module-optimization","-num-threads","14","-c","@/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR.build/sources","-I","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/Modules","-target","arm64-apple-macosx13.0","-whole-module-optimization","-num-threads","14","-serialize-diagnostics","-O","-j14","-DSWIFT_PACKAGE","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","AppleVisionOCR_main","-color-diagnostics","-swift-version","5","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/Sources/","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/Package.swift","/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

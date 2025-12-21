@@ -1,19 +1,5 @@
-from typing import Callable, Dict
+from n2n.primitives.registry import get_primitive, list_primitives, register_primitive
 
-PrimitiveFunc = Callable[..., object]
-PRIMITIVES: Dict[str, PrimitiveFunc] = {}
+from . import card_pan  # noqa: F401
 
-
-def register_primitive(name: str) -> Callable[[PrimitiveFunc], PrimitiveFunc]:
-    """
-    Decorator used by primitive modules to self-register detection helpers.
-    """
-
-    def decorator(func: PrimitiveFunc) -> PrimitiveFunc:
-        PRIMITIVES[name] = func
-        return func
-
-    return decorator
-
-
-__all__ = ["PRIMITIVES", "register_primitive"]
+__all__ = ["get_primitive", "list_primitives", "register_primitive"]

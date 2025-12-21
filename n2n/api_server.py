@@ -1,79 +1,50 @@
 from __future__ import annotations
 
 import shutil
-import os
+import tempfile
 from pathlib import Path
-from tempfile import TemporaryDirectory
-from typing import Literal
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import JSONResponse, Response
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
-from n2n.pipeline import run_highlight, run_pipeline
+from n2n.packs import list_packs, run_pack
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CONFIG_DIR = Path(os.environ.get("N2N_CONFIG_DIR", PROJECT_ROOT)).resolve()
-
-app = FastAPI(title="N2N Local API", version="0.0.1")
+app = FastAPI(title="N2N v0.1")
 
 
-def _save_upload_to_temp(upload: UploadFile, tmp_dir: Path) -> Path:
-    tmp_path = tmp_dir / upload.filename
-    with tmp_path.open("wb") as handle:
-        shutil.copyfileobj(upload.file, handle)
-    return tmp_path
+@app.get("/packs")
+def get_packs():
+    return sorted(list_packs().keys())
 
 
-def _run_engine(mode: Literal["redact", "highlight"], pdf_path: Path, config_dir: Path):
-    if mode == "highlight":
-        return run_highlight(pdf_path, config_dir)
-    return run_pipeline(pdf_path, config_dir)
-
-
-def _build_pdf_response(path: Path) -> Response:
-    data = path.read_bytes()
-    headers = {"Content-Disposition": f'attachment; filename="{path.name}"'}
-    return Response(content=data, media_type="application/pdf", headers=headers)
-
-
-def _process_upload(upload: UploadFile, mode: Literal["redact", "highlight"]):
-    if not upload.filename or not upload.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
-
-    with TemporaryDirectory() as tmp_dir_str:
-        tmp_dir = Path(tmp_dir_str)
-        input_path = _save_upload_to_temp(upload, tmp_dir)
-        outcome = _run_engine(mode, input_path, CONFIG_DIR)
-
-        if outcome.reason:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "skipped",
-                    "reason": outcome.reason,
-                    "redactions_applied": outcome.redactions_applied,
-                },
-            )
-
-        if not outcome.output_path or not outcome.output_path.exists():
-            raise HTTPException(status_code=500, detail="Output file missing.")
-
-        return _build_pdf_response(outcome.output_path)
-
-
-@app.post("/redact")
-async def redact(file: UploadFile = File(...)):
-    return _process_upload(file, "redact")
-
-
-@app.post("/highlight")
-async def highlight(file: UploadFile = File(...)):
-    return _process_upload(file, "highlight")
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
+@app.post("/v1/process")
+async def process(
+    file: UploadFile = File(...),
+    pack_id: str = Form(...),
+    outdir: str = Form("out"),
+    force_band_redact: bool = Form(False),
+    ocr_backend: str | None = Form(None),
+):
+    suffix = Path(file.filename or "upload").suffix or ".bin"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = Path(tmp.name)
+    try:
+        outdir_path = Path(outdir)
+        report = run_pack(
+            pack_id,
+            tmp_path,
+            outdir_path,
+            force_band_redact=force_band_redact,
+            ocr_backend=ocr_backend,
+        )
+        return report
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 __all__ = ["app"]

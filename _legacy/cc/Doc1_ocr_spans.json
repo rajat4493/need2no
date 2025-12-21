@@ -1,0 +1,14 @@
+[
+  {
+    "page_index": 0,
+    "text": "a TAZ",
+    "bbox": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "source": "ocr",
+    "ocr_confidence": 0.0025
+  }
+]

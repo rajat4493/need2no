@@ -1,0 +1,10 @@
+{
+  "pack": "pci_lite",
+  "decision": "CONFIRMED",
+  "reasons": [],
+  "detections": [],
+  "artifacts": {
+    "input": "cc/Doc1.pdf",
+    "report": "cc/Doc1_pci_lite_report.json"
+  }
+}

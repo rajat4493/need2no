@@ -1,0 +1,58 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/rpandey/DevHub/N2N/tools/apple_vision_ocr/.build/arm64-apple-macosx/release/AppleVisionOCR'
+relocations:
+  - { offset: 0xE7AC0, size: 0x8, addend: 0x0, symName: '_$sSTsE7forEachyyy7ElementQzKXEKFSaySo27VNRecognizedTextObservationCG_Tg5031$s14AppleVisionOCR4mainyyFySo27deF7CXEfU0_SaySSGSaySdGSaySDySSypGGTf1cn_n', symObjAddr: 0x1154, symBinAddr: 0x1000022A4, symSize: 0x554 }
+  - { offset: 0xE8146, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionas21_ObjectiveCBridgeableSCsACP09_bridgeToC1C01_C5CTypeQzyFTW', symObjAddr: 0x16A8, symBinAddr: 0x1000027F8, symSize: 0x8 }
+  - { offset: 0xE81B7, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionas21_ObjectiveCBridgeableSCsACP016_forceBridgeFromC1C_6resulty01_C5CTypeQz_xSgztFZTW', symObjAddr: 0x16B0, symBinAddr: 0x100002800, symSize: 0x74 }
+  - { offset: 0xE8265, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionas21_ObjectiveCBridgeableSCsACP024_conditionallyBridgeFromC1C_6resultSb01_C5CTypeQz_xSgztFZTW', symObjAddr: 0x1724, symBinAddr: 0x100002874, symSize: 0x7C }
+  - { offset: 0xE8313, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionas21_ObjectiveCBridgeableSCsACP026_unconditionallyBridgeFromC1Cyx01_C5CTypeQzSgFZTW', symObjAddr: 0x17A0, symBinAddr: 0x1000028F0, symSize: 0x40 }
+  - { offset: 0xE8392, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionaSHSCSH9hashValueSivgTW', symObjAddr: 0x17E0, symBinAddr: 0x100002930, symSize: 0x38 }
+  - { offset: 0xE8410, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionaSHSCSH4hash4intoys6HasherVz_tFTW', symObjAddr: 0x1818, symBinAddr: 0x100002968, symSize: 0x40 }
+  - { offset: 0xE848E, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionaSHSCSH13_rawHashValue4seedS2i_tFTW', symObjAddr: 0x1858, symBinAddr: 0x1000029A8, symSize: 0x70 }
+  - { offset: 0xE8504, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionaSQSCSQ2eeoiySbx_xtFZTW', symObjAddr: 0x18C8, symBinAddr: 0x100002A18, symSize: 0x84 }
+  - { offset: 0xE85A6, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionas35_HasCustomAnyHashableRepresentationSCsACP03_todeF0s0eF0VSgyFTW', symObjAddr: 0x19B8, symBinAddr: 0x100002B08, symSize: 0x6C }
+  - { offset: 0xE8654, size: 0x8, addend: 0x0, symName: '_$sSD17dictionaryLiteralSDyxq_Gx_q_td_tcfCSo13VNImageOptiona_ypTt0g5Tf4g_n', symObjAddr: 0x26AC, symBinAddr: 0x1000037FC, symSize: 0x108 }
+  - { offset: 0xE8786, size: 0x8, addend: 0x0, symName: '_$sSD17dictionaryLiteralSDyxq_Gx_q_td_tcfCSS_ypTt0g5Tf4g_n', symObjAddr: 0x2858, symBinAddr: 0x1000039A8, symSize: 0x118 }
+  - { offset: 0xE88FB, size: 0x8, addend: 0x0, symName: _AppleVisionOCR_main, symObjAddr: 0x0, symBinAddr: 0x100001150, symSize: 0x18 }
+  - { offset: 0xE89FC, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR4mainyyF', symObjAddr: 0x18, symBinAddr: 0x100001168, symSize: 0x964 }
+  - { offset: 0xE92B7, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR14parseArgumentsAA0E0VyF', symObjAddr: 0x97C, symBinAddr: 0x100001ACC, symSize: 0x794 }
+  - { offset: 0xE9DE9, size: 0x8, addend: 0x0, symName: ___swift_instantiateConcreteTypeFromMangledName, symObjAddr: 0x1110, symBinAddr: 0x100002260, symSize: 0x44 }
+  - { offset: 0xEA093, size: 0x8, addend: 0x0, symName: '_$ss22__RawDictionaryStorageC4findys10_HashTableV6BucketV6bucket_Sb5foundtxSHRzlFSS_Tg5', symObjAddr: 0x1A24, symBinAddr: 0x100002B74, symSize: 0x64 }
+  - { offset: 0xEA0C0, size: 0x8, addend: 0x0, symName: '_$ss22__RawDictionaryStorageC4findys10_HashTableV6BucketV6bucket_Sb5foundtxSHRzlFSo13VNImageOptiona_Tg5', symObjAddr: 0x1A88, symBinAddr: 0x100002BD8, symSize: 0x80 }
+  - { offset: 0xEA149, size: 0x8, addend: 0x0, symName: '_$ss22__RawDictionaryStorageC4find_9hashValues10_HashTableV6BucketV6bucket_Sb5foundtx_SitSHRzlFSS_Tg5', symObjAddr: 0x1B08, symBinAddr: 0x100002C58, symSize: 0xB4 }
+  - { offset: 0xEA1A0, size: 0x8, addend: 0x0, symName: '_$ss22__RawDictionaryStorageC4find_9hashValues10_HashTableV6BucketV6bucket_Sb5foundtx_SitSHRzlFSo13VNImageOptiona_Tg5', symObjAddr: 0x1BBC, symBinAddr: 0x100002D0C, symSize: 0x100 }
+  - { offset: 0xEA309, size: 0x8, addend: 0x0, symName: '_$sSlsE5split9maxSplits25omittingEmptySubsequences14whereSeparatorSay11SubSequenceQzGSi_S2b7ElementQzKXEtKFSS_Tg5', symObjAddr: 0x1E78, symBinAddr: 0x100002FC8, symSize: 0x3EC }
+  - { offset: 0xEA77E, size: 0x8, addend: 0x0, symName: '_$ss12_ArrayBufferV20_consumeAndCreateNew14bufferIsUnique15minimumCapacity13growForAppendAByxGSb_SiSbtFSd_Tg5', symObjAddr: 0x2264, symBinAddr: 0x1000033B4, symSize: 0xF8 }
+  - { offset: 0xEA8E3, size: 0x8, addend: 0x0, symName: '_$ss12_ArrayBufferV20_consumeAndCreateNew14bufferIsUnique15minimumCapacity13growForAppendAByxGSb_SiSbtFSs_Tg5', symObjAddr: 0x235C, symBinAddr: 0x1000034AC, symSize: 0x100 }
+  - { offset: 0xEAA48, size: 0x8, addend: 0x0, symName: '_$ss12_ArrayBufferV20_consumeAndCreateNew14bufferIsUnique15minimumCapacity13growForAppendAByxGSb_SiSbtFSDySSypG_Tg5', symObjAddr: 0x245C, symBinAddr: 0x1000035AC, symSize: 0x120 }
+  - { offset: 0xEAB4A, size: 0x8, addend: 0x0, symName: '_$ss15ContiguousArrayV16_createNewBuffer14bufferIsUnique15minimumCapacity13growForAppendySb_SiSbtFSS_Tg5', symObjAddr: 0x257C, symBinAddr: 0x1000036CC, symSize: 0x24 }
+  - { offset: 0xEABC5, size: 0x8, addend: 0x0, symName: '_$sSaySSGSayxGSKsWl', symObjAddr: 0x27C8, symBinAddr: 0x100003918, symSize: 0x48 }
+  - { offset: 0xEABD9, size: 0x8, addend: 0x0, symName: ___swift_instantiateConcreteTypeFromMangledNameAbstract, symObjAddr: 0x2810, symBinAddr: 0x100003960, symSize: 0x48 }
+  - { offset: 0xEAC41, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR9ArgumentsVWOh', symObjAddr: 0x2970, symBinAddr: 0x100003AC0, symSize: 0x30 }
+  - { offset: 0xEAC6A, size: 0x8, addend: 0x0, symName: '_$s10Foundation4DataV15_RepresentationOWOe', symObjAddr: 0x29A0, symBinAddr: 0x100003AF0, symSize: 0x40 }
+  - { offset: 0xEAC7E, size: 0x8, addend: 0x0, symName: '_$sypWOb', symObjAddr: 0x2A20, symBinAddr: 0x100003B70, symSize: 0x10 }
+  - { offset: 0xEACCC, size: 0x8, addend: 0x0, symName: '_$sSlsSQ7ElementRpzrlE5split9separator9maxSplits25omittingEmptySubsequencesSay11SubSequenceQzGAB_SiSbtFSbABXEfU_SS_TG5TA', symObjAddr: 0x2A74, symBinAddr: 0x100003BC4, symSize: 0x54 }
+  - { offset: 0xEAD5E, size: 0x8, addend: 0x0, symName: '_$sS2sSysWl', symObjAddr: 0x2AC8, symBinAddr: 0x100003C18, symSize: 0x40 }
+  - { offset: 0xEAD72, size: 0x8, addend: 0x0, symName: '_$sSdySdSgxcSyRzlufcSbSpySdGXEfU_SbSPys4Int8VGXEfU_TA', symObjAddr: 0x2B08, symBinAddr: 0x100003C58, symSize: 0x78 }
+  - { offset: 0xEAD93, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR9ArgumentsVwCP', symObjAddr: 0x2B80, symBinAddr: 0x100003CD0, symSize: 0x2C }
+  - { offset: 0xEADA7, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR9ArgumentsVwxx', symObjAddr: 0x2BAC, symBinAddr: 0x100003CFC, symSize: 0x28 }
+  - { offset: 0xEADBB, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR9ArgumentsVwcp', symObjAddr: 0x2BD4, symBinAddr: 0x100003D24, symSize: 0x4C }
+  - { offset: 0xEADCF, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR9ArgumentsVwca', symObjAddr: 0x2C20, symBinAddr: 0x100003D70, symSize: 0x94 }
+  - { offset: 0xEADE3, size: 0x8, addend: 0x0, symName: ___swift_memcpy65_8, symObjAddr: 0x2CB4, symBinAddr: 0x100003E04, symSize: 0x24 }
+  - { offset: 0xEADF7, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR9ArgumentsVwta', symObjAddr: 0x2CD8, symBinAddr: 0x100003E28, symSize: 0x54 }
+  - { offset: 0xEAE0B, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR9ArgumentsVwet', symObjAddr: 0x2D2C, symBinAddr: 0x100003E7C, symSize: 0x48 }
+  - { offset: 0xEAE1F, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR9ArgumentsVwst', symObjAddr: 0x2D74, symBinAddr: 0x100003EC4, symSize: 0x54 }
+  - { offset: 0xEAE33, size: 0x8, addend: 0x0, symName: '_$s14AppleVisionOCR9ArgumentsVMa', symObjAddr: 0x2DC8, symBinAddr: 0x100003F18, symSize: 0x10 }
+  - { offset: 0xEAE47, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionas20_SwiftNewtypeWrapperSCSYWb', symObjAddr: 0x2DD8, symBinAddr: 0x100003F28, symSize: 0x24 }
+  - { offset: 0xEAE5B, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionas20_SwiftNewtypeWrapperSCs35_HasCustomAnyHashableRepresentationPWb', symObjAddr: 0x2E3C, symBinAddr: 0x100003F8C, symSize: 0x24 }
+  - { offset: 0xEAE6F, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionaSHSCSQWb', symObjAddr: 0x2E60, symBinAddr: 0x100003FB0, symSize: 0x24 }
+  - { offset: 0xEAE83, size: 0x8, addend: 0x0, symName: '_$sSo6CGRectVwCP', symObjAddr: 0x2E84, symBinAddr: 0x100003FD4, symSize: 0x2C }
+  - { offset: 0xEAE97, size: 0x8, addend: 0x0, symName: ___swift_noop_void_return, symObjAddr: 0x2EB0, symBinAddr: 0x100004000, symSize: 0x4 }
+  - { offset: 0xEAEAB, size: 0x8, addend: 0x0, symName: ___swift_memcpy32_8, symObjAddr: 0x2EB4, symBinAddr: 0x100004004, symSize: 0xC }
+  - { offset: 0xEAEBF, size: 0x8, addend: 0x0, symName: '_$sSo6CGRectVwet', symObjAddr: 0x2EC0, symBinAddr: 0x100004010, symSize: 0x20 }
+  - { offset: 0xEAED3, size: 0x8, addend: 0x0, symName: '_$sSo6CGRectVwst', symObjAddr: 0x2EE0, symBinAddr: 0x100004030, symSize: 0x2C }
+  - { offset: 0xEAEE7, size: 0x8, addend: 0x0, symName: ___swift_memcpy16_8, symObjAddr: 0x2F20, symBinAddr: 0x100004070, symSize: 0xC }
+  - { offset: 0xEB236, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionaSYSCSY8rawValuexSg03RawD0Qz_tcfCTW', symObjAddr: 0x194C, symBinAddr: 0x100002A9C, symSize: 0x44 }
+  - { offset: 0xEB260, size: 0x8, addend: 0x0, symName: '_$sSo13VNImageOptionaSYSCSY8rawValue03RawD0QzvgTW', symObjAddr: 0x1990, symBinAddr: 0x100002AE0, symSize: 0x28 }
+...
