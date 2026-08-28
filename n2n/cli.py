@@ -19,6 +19,21 @@ def packs() -> None:
 
 
 @app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address"),
+    port: int = typer.Option(8000, "--port", help="Bind port"),
+) -> None:
+    """Run the local web UI: upload -> instant result -> findings -> download.
+
+    Runs entirely on this machine — no document content or telemetry
+    leaves the process."""
+    import uvicorn
+
+    typer.echo(f"N2N running at http://{host}:{port} (local only, nothing leaves this process)")
+    uvicorn.run("n2n.webapp.server:app", host=host, port=port)
+
+
+@app.command()
 def redact(
     file: Path = typer.Argument(..., exists=True, readable=True, help="PDF to process"),
     pack: str = typer.Option(..., "--pack", help="Purpose pack ID"),

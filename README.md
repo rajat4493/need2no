@@ -75,6 +75,36 @@ A non-`PASS_AUTO` run exits with a non-zero status code and writes no
 output file — check `--dry-run` output or the JSON report on stdout for
 plain-language reasons.
 
+## Web UI (`n2n serve`)
+
+```bash
+n2n serve --port 8000
+```
+
+Runs a local upload -> instant result -> findings -> download flow at
+`http://127.0.0.1:8000`, entirely in-process: no document content or
+telemetry leaves the machine, and nothing is persisted beyond an
+in-memory, TTL-expiring session that exists only so a `PASS_AUTO` result
+can be downloaded (`n2n/webapp/sessions.py`).
+
+- **`GET /v1/packs`** — list purpose packs.
+- **`POST /v1/redact?pack_id=...`** (multipart `file`) — runs the full
+  pipeline and returns the decision report as JSON, plus a
+  `download_token` when (and only when) the status is `PASS_AUTO`.
+- **`GET /v1/download/{token}/output.pdf`** / **`/manifest.json`** —
+  download the certified output and its signed manifest. 404 for any
+  token that doesn't correspond to a live `PASS_AUTO` session — there is
+  no code path that can serve a file for a refused document.
+
+The findings the API returns deliberately never include the underlying
+sensitive text — only field type, page, geometry, confidence tier, and
+what happened to it (`n2n/models.py:DecisionReport.to_dict`,
+covered by `tests/test_webapp.py::test_findings_never_include_raw_sensitive_text`).
+The UI shows per-finding outcomes distinctly for a refusal
+(*"Would remove"* / *"Flagged for review"*) versus a certification
+(*"Removed"*) rather than one blended state, and never renders a
+confidence score anywhere — both required by spec section 6.
+
 ## Tests
 
 ```bash
@@ -84,7 +114,9 @@ pytest
 
 Covers detector validators (mod-97, Luhn), the output-gate invariant
 (including a static check that only `n2n/pipeline.py` may mint a release
-token), full pipeline runs for `PASS_AUTO`, `NEEDS_REVIEW`, and
+token), the web API (`tests/test_webapp.py` — download gating, 404s for
+unknown/forged tokens, no raw sensitive text in responses), full pipeline
+runs for `PASS_AUTO`, `NEEDS_REVIEW`, and
 `UNSUPPORTED`, signed-manifest verification, and deterministic replay
 (same input + pack + engine version → byte-identical output).
 

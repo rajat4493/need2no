@@ -61,13 +61,20 @@ def run(
 
         # Stage 4: policy resolution
         resolution = resolve(findings, pack)
+        # Findings reported from here on reflect what the policy actually
+        # decided for each one (removed/preserved/flagged), not the raw
+        # pre-resolution list — otherwise a structural field that was
+        # cleanly resolved shows up identical to the one that's actually
+        # blocking release, which is exactly the kind of unclear finding
+        # spec 6 asks the UI not to produce.
+        resolved_findings = resolution.to_remove + resolution.needs_review + resolution.to_preserve
 
         if resolution.conflicts:
             return _finish(
                 status=ReleaseStatus.NEEDS_REVIEW,
                 pack=pack,
                 reasons=[f"Policy conflict on field(s): {', '.join(resolution.conflicts)}"],
-                findings=findings,
+                findings=resolved_findings,
                 document_info=extraction.document_info,
                 verification=None,
                 input_bytes=input_bytes,
@@ -82,7 +89,7 @@ def run(
                 reasons=[
                     f"Field(s) require human review before release: {', '.join(review_fields)}"
                 ],
-                findings=findings,
+                findings=resolved_findings,
                 document_info=extraction.document_info,
                 verification=None,
                 input_bytes=input_bytes,
@@ -100,7 +107,7 @@ def run(
                 status=ReleaseStatus.NEEDS_REVIEW,
                 pack=pack,
                 reasons=["Dry run: no output produced. Findings above show what would happen."],
-                findings=findings,
+                findings=resolved_findings,
                 document_info=extraction.document_info,
                 verification=None,
                 input_bytes=input_bytes,
@@ -121,7 +128,7 @@ def run(
                     "Independent re-verification found residual matches for: "
                     + ", ".join(verification.residual_fields)
                 ],
-                findings=findings,
+                findings=resolved_findings,
                 document_info=extraction.document_info,
                 verification=verification,
                 input_bytes=input_bytes,
@@ -129,7 +136,6 @@ def run(
             )
 
         # Stage 7 + 8: manifest + release decision
-        resolved_findings = resolution.to_remove + resolution.to_preserve
         report = _finish(
             status=ReleaseStatus.PASS_AUTO,
             pack=pack,
