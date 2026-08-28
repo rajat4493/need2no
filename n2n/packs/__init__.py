@@ -1,3 +1,3 @@
-from n2n.packs.registry import list_packs, run_pack
+from n2n.packs.registry import get_pack, list_packs
 
-__all__ = ["list_packs", "run_pack"]
+__all__ = ["get_pack", "list_packs"]
