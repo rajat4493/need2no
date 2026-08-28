@@ -30,9 +30,11 @@ def extract_native(path: Path) -> ExtractionResult:
         for page_index, page in enumerate(doc):
             page_heights.append(page.rect.height)
             words = page.get_text("words")  # x0, y0, x1, y1, word, block, line, word_no
-            for x0, y0, x1, y1, word, *_ in words:
+            for x0, y0, x1, y1, word, block_no, *_ in words:
                 if word.strip():
-                    spans.append(TextSpan(text=word, bbox=(x0, y0, x1, y1), page=page_index))
+                    spans.append(
+                        TextSpan(text=word, bbox=(x0, y0, x1, y1), page=page_index, block=block_no)
+                    )
 
         has_form_fields = any(page.first_widget is not None for page in doc)
         has_annotations = any(page.first_annot is not None for page in doc)
@@ -77,9 +79,40 @@ def group_spans_into_lines(spans: list[TextSpan], y_tolerance: float = 3.0) -> l
                 current.append(span)
                 current_y = y if current_y is None else current_y
             else:
-                lines.append(sorted(current, key=lambda s: s.bbox[0]))
+                lines.extend(_split_overlapping_layers(current))
                 current = [span]
                 current_y = y
         if current:
-            lines.append(sorted(current, key=lambda s: s.bbox[0]))
+            lines.extend(_split_overlapping_layers(current))
     return lines
+
+
+def _split_overlapping_layers(bucket: list[TextSpan]) -> list[list[TextSpan]]:
+    """A y-tolerance bucket normally IS one reading-order line. But two
+    independent text layers stacked at the same coordinates — e.g. a
+    visible line with an invisible OCR duplicate drawn directly under it —
+    land in the same bucket too, and interleaving their tokens by x would
+    corrupt both (a label from one layer next to a value from the other,
+    so neither's label-proximity check matches). Detect that by looking
+    for spans from different content-stream blocks whose x-ranges
+    significantly overlap, and if found, split the bucket per block
+    instead of treating it as one line."""
+    bucket = sorted(bucket, key=lambda s: s.bbox[0])
+    has_cross_block_overlap = False
+    for i in range(len(bucket) - 1):
+        a, b = bucket[i], bucket[i + 1]
+        if a.block == b.block:
+            continue
+        overlap = min(a.bbox[2], b.bbox[2]) - max(a.bbox[0], b.bbox[0])
+        narrower_width = min(a.bbox[2] - a.bbox[0], b.bbox[2] - b.bbox[0])
+        if narrower_width > 0 and overlap > 0.5 * narrower_width:
+            has_cross_block_overlap = True
+            break
+
+    if not has_cross_block_overlap:
+        return [bucket]
+
+    by_block: dict[int, list[TextSpan]] = {}
+    for span in bucket:
+        by_block.setdefault(span.block, []).append(span)
+    return [sorted(group, key=lambda s: s.bbox[0]) for group in by_block.values()]

@@ -15,6 +15,24 @@ NAME_CANDIDATE_RE = re.compile(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\b")
 
 HEADER_Y_FRACTION = 0.20
 
+# Common UK bank-statement vocabulary that is routinely Title-Cased in real
+# layouts ("Sort Code", "Account Number", "Statement Date", ...). A line
+# built entirely from this vocabulary is a label, not a name candidate.
+# This is a precision fix, not a promotion to auto-tier: anything that
+# clears this stoplist still lands at review tier only (spec 5.6).
+STATEMENT_VOCAB = {
+    "sort", "code", "account", "number", "statement", "date", "balance",
+    "opening", "closing", "available", "transaction", "reference", "payment",
+    "deposit", "withdrawal", "bank", "plc", "ltd", "branch", "address",
+    "total", "description", "amount", "currency", "iban", "swift", "bic",
+    "card", "sortcode", "period", "summary", "page", "of", "and", "the",
+}
+
+
+def _is_statement_vocab_only(phrase: str) -> bool:
+    words = re.findall(r"[A-Za-z]+", phrase)
+    return bool(words) and all(w.lower() in STATEMENT_VOCAB for w in words)
+
 
 def detect_name_header_candidates(
     lines: list[list[TextSpan]], page_height: float | None = None
@@ -28,8 +46,14 @@ def detect_name_header_candidates(
             if y0 > page_height * HEADER_Y_FRACTION:
                 continue
         text = line_text(line)
+        if ":" in text or any(ch.isdigit() for ch in text):
+            # A "Label: value" pair or a line carrying digits (dates, sort
+            # codes, amounts) is not a free-text name candidate.
+            continue
         match = NAME_CANDIDATE_RE.search(text)
         if not match:
+            continue
+        if _is_statement_vocab_only(match.group(0)):
             continue
         findings.append(
             Finding(

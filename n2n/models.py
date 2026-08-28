@@ -14,6 +14,11 @@ class TextSpan:
     text: str
     bbox: Bbox
     page: int
+    # PDF content-stream block index this span came from (0 when unknown,
+    # e.g. spans built directly in tests). Used to detect two independent
+    # text layers occupying the same coordinates — see
+    # extract.group_spans_into_lines.
+    block: int = 0
 
 
 @dataclass(frozen=True)

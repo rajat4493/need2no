@@ -87,3 +87,39 @@ Covers detector validators (mod-97, Luhn), the output-gate invariant
 token), full pipeline runs for `PASS_AUTO`, `NEEDS_REVIEW`, and
 `UNSUPPORTED`, signed-manifest verification, and deterministic replay
 (same input + pack + engine version → byte-identical output).
+
+## Adversarial testing (`tests/test_adversarial.py`)
+
+A first pass at trying to break the engine with hostile-but-still-native-text
+PDFs, not the full Phase 2 corpus (spec section 8/9 — a few hundred documents,
+real bank layouts, published per-field benchmarks). It found and fixed three
+real bugs before this reached a clean pass:
+
+1. **Split-token values.** A sort code or account number whose digits land
+   in separate word-tokens (odd kerning, some OCR/generator output) was
+   matched against space-joined text and missed entirely — a silent leak.
+   Fixed by scanning the *compact* (no-separator) reconstruction of each
+   line with digit-boundary lookarounds, the same technique already used
+   for IBANs.
+2. **Label/value collision with statement vocabulary.** The free-text
+   name-candidate heuristic matched common Title-Cased labels themselves
+   ("Sort Code", "Account Number"), which would have forced `NEEDS_REVIEW`
+   on nearly every realistic statement. Fixed with a label/digit exclusion
+   and a small banking-vocabulary stoplist — the heuristic still stays at
+   review tier only, per spec 5.6, this just improves precision.
+3. **Stacked/invisible text layers.** Two independent text runs occupying
+   the same coordinates (e.g. a visible line with an invisible OCR
+   duplicate drawn under it) were interleaved by the y-tolerance line
+   grouper, corrupting label matching for *both* layers and producing zero
+   findings — the exact "visual cover survives, underlying text doesn't
+   get removed" failure class the product exists to catch. Fixed by
+   detecting cross-block x-overlap within a line bucket and splitting by
+   content-stream block when it's found.
+
+**Known gap, not yet covered:** a font with a broken or missing
+`ToUnicode` CMap, where the extracted text doesn't match the rendered
+glyphs at all (the literal bug class behind the Epstein-files and Meta v.
+FTC redaction failures cited in the build spec). Constructing a minimal
+repro needs a deliberately malformed embedded font rather than PyMuPDF's
+standard text insertion, so it's flagged here for the Phase 2 corpus
+rather than solved in this pass.
