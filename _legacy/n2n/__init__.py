@@ -1,3 +1,0 @@
-__version__ = "0.0.1"
-
-DEFAULT_QUALITY_THRESHOLD = 0.50

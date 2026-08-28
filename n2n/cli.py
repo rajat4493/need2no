@@ -5,41 +5,62 @@ from pathlib import Path
 
 import typer
 
-from n2n.packs import list_packs, run_pack
+from n2n import pipeline
+from n2n.packs.registry import list_packs
 
-app = typer.Typer(help="N2N v0.1 – card PAN redaction")
-
-
-@app.command()
-def packs():
-    for pack_id in list_packs().keys():
-        typer.echo(pack_id)
+app = typer.Typer(help="N2N — a fail-closed disclosure gate.")
 
 
 @app.command()
-def process(
-    file: Path = typer.Argument(..., exists=True, readable=True, help="PDF or image to process"),
-    pack: str = typer.Option(..., "--pack", help="Pack ID to execute"),
-    outdir: Path = typer.Option(Path("out"), "--outdir", help="Output directory"),
-    force_band_redact: bool = typer.Option(
-        False,
-        "--force-band-redact",
-        help="Force redaction of suggested PAN bands when review is required.",
+def packs() -> None:
+    """List available purpose packs."""
+    for pack_id, pack in list_packs().items():
+        typer.echo(f"{pack_id}\t{pack.version}\t{pack.description}")
+
+
+@app.command()
+def redact(
+    file: Path = typer.Argument(..., exists=True, readable=True, help="PDF to process"),
+    pack: str = typer.Option(..., "--pack", help="Purpose pack ID"),
+    output: Path = typer.Option(Path("safe.pdf"), "--output", help="Output PDF path"),
+    manifest: Path = typer.Option(Path("safe.n2n.json"), "--manifest", help="Evidence manifest path"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would happen without producing output."
     ),
-    ocr_backend: str | None = typer.Option(
-        None,
-        "--ocr-backend",
-        help="OCR backend mode: auto, tesseract, apple, paddle, easy, combo.",
-    ),
-):
-    report = run_pack(
-        pack,
-        file,
-        outdir,
-        force_band_redact=force_band_redact,
-        ocr_backend=ocr_backend,
+) -> None:
+    """Certify a document for release under a purpose pack, or refuse with a reason."""
+    report = pipeline.run(
+        input_path=file,
+        pack_id=pack,
+        output_path=None if dry_run else output,
+        manifest_path=None if dry_run else manifest,
+        dry_run=dry_run,
     )
-    typer.echo(json.dumps(report, indent=2))
+
+    _print_human_summary(report)
+    if report.status != "PASS_AUTO":
+        raise typer.Exit(code=1)
+
+
+def _print_human_summary(report) -> None:
+    typer.echo(f"Status: {report.status}")
+    for reason in report.reasons:
+        typer.echo(f"  - {reason}")
+
+    if report.status == "PASS_AUTO":
+        typer.echo(f"Certified output: {report.output_path}")
+        typer.echo(f"Evidence manifest: {report.manifest_path}")
+    else:
+        typer.echo("Not certified: no output file was produced.")
+
+    if report.findings:
+        typer.echo("Findings:")
+        for f in report.findings:
+            typer.echo(
+                f"  page {f.page + 1}: {f.field_id} [{f.tier}] -> {f.action}"
+            )
+
+    typer.echo(json.dumps(report.to_dict(), indent=2))
 
 
 if __name__ == "__main__":

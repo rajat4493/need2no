@@ -1,10 +1,54 @@
-# N2N Redactor
+# N2N — a fail-closed disclosure gate
 
-N2N is a local-first redaction toolkit that inspects PDFs or photos for payment-card and identity documents. Packs encapsulate deterministic pipelines for specific document types:
+N2N takes a sensitive document plus a declared purpose, and either returns
+a certified, purpose-minimised, irreversibly redacted document with
+machine-readable proof of what it did — or it refuses and tells you
+exactly why.
 
-- `global.pci_lite.v1` inspects PDFs for PANs and produces redacted outputs.
-- `global.card_photo.v1` handles card photos with ROI OCR and visual heuristics.
-- `global.id_photo.v1` handles ID cards, MRZ, ID number, and face/DOB masking.
+**Every document leaves with proof — or it doesn't leave.**
+
+## Phase 1 scope
+
+Native-text UK bank statement PDFs only. Structured identifiers only: UK
+sort codes, account numbers (label-validated), GB IBANs (mod-97 checksum),
+payment card numbers (Luhn checksum, clearly formatted). Free-text
+name/address candidates are always review-tier — never auto-resolved (see
+`n2n/detectors/name_header.py`).
+
+Scanned/photographed documents, OCR, and purpose packs beyond
+`uk.bank_statement.share_with_ai` are out of scope for Phase 1 (see the
+build spec, sections 8 and 10).
+
+## The five release states
+
+`PASS_AUTO`, `NEEDS_REVIEW`, `UNSUPPORTED`, `FAILED_VERIFY`,
+`PROCESSING_ERROR`. No other return state exists. It is structurally
+impossible for the CLI to emit an output file on any status other than
+`PASS_AUTO` — see `n2n/output_gate.py` for how that invariant is enforced
+(and `tests/test_output_gate.py` for how it's guarded against regressions).
+
+## Pipeline
+
+1. **Preflight** (`n2n/preflight.py`) — classify the input; reject anything
+   outside Phase 1's supported class immediately.
+2. **Extraction** (`n2n/extract.py`) — native text, layout, metadata, forms,
+   annotations, incremental-update history, via PyMuPDF.
+3. **Detection** (`n2n/detectors/`) — structured detectors first
+   (checksum/label-validated), then free-text name candidates, tagged
+   separately by confidence tier.
+4. **Policy resolution** (`n2n/policy.py`) — apply the pack's must-hide /
+   must-preserve rules; any conflict forces `NEEDS_REVIEW`.
+5. **Transform** (`n2n/transform.py`) — irreversible removal via content
+   stream rewrite (PyMuPDF redaction annotations, not an overlay box),
+   plus metadata/form/annotation/embedded-file stripping and history
+   flattening.
+6. **Independent verification** (`n2n/verify.py`) — reopens the *output*
+   through pdfplumber, a separate library from the one used to extract
+   and transform, and checks for residual matches.
+7. **Evidence manifest** (`n2n/manifest.py`) — signed with a local Ed25519
+   keypair (`n2n/keys.py`, generated on first run, customer-owned — no
+   hosted signing service).
+8. **Release decision** — only `PASS_AUTO` releases a file.
 
 ## Installation
 
@@ -14,53 +58,32 @@ python -m venv .venv
 pip install -e .
 ```
 
-For contributors, run `scripts/dev_reset.sh` to ensure the editable install points at this checkout.
-
-## CLI Usage
-
-List packs:
+## CLI usage
 
 ```bash
-python -m n2n.cli packs
+n2n packs
+
+n2n redact statement.pdf \
+  --pack uk.bank_statement.share_with_ai \
+  --output safe.pdf \
+  --manifest safe.n2n.json
+
+n2n redact statement.pdf --pack uk.bank_statement.share_with_ai --dry-run
 ```
 
-Process an input (PDF or image):
+A non-`PASS_AUTO` run exits with a non-zero status code and writes no
+output file — check `--dry-run` output or the JSON report on stdout for
+plain-language reasons.
+
+## Tests
 
 ```bash
-python -m n2n.cli process input.pdf --pack global.pci_lite.v1 --outdir out
+pip install -e ".[dev]"
+pytest
 ```
 
-The command writes a JSON report plus highlight PDF to `out`. For CONFIRMED card/id packs, a redacted PDF is also emitted.
-
-### OCR backends
-
-Photo packs now use a pluggable OCR stack:
-
-- Default `tesseract` backend works everywhere.
-- Optional `apple` backend wraps a tiny Swift CLI that uses `Vision` on macOS. Build once via:
-
-  ```bash
-  cd tools/apple_vision_ocr
-  swift build -c release
-  cd ../..
-  ```
-
-- Optional extras:
-  - `pip install -e .[paddle]` enables PaddleOCR
-  - `pip install -e .[easy]` enables EasyOCR
-
-Select backends with `--ocr-backend auto|tesseract|apple|paddle|easy|combo`, via the `N2N_OCR_BACKEND` env var, or `ocr_backend=` on the API. In AUTO/COMBO modes the runner tries Apple Vision first, then PaddleOCR, then Tesseract; if any backend is missing it skips to the next without failing the run.
-
-## API Usage
-
-`n2n.api_server:app` exposes a FastAPI server. Example with uvicorn:
-
-```bash
-uvicorn n2n.api_server:app --reload
-```
-
-`POST /v1/process` accepts `multipart/form-data` uploads with `file`, `pack_id`, and optional `outdir`.
-
-## YOLO Weights
-
-Object detection weights (`n2n_assets/models/card_id_yolo.pt`) are optional. When absent, packs fall back to deterministic geometry and visual heuristics. In both cases the system remains local-first and never uploads documents.
+Covers detector validators (mod-97, Luhn), the output-gate invariant
+(including a static check that only `n2n/pipeline.py` may mint a release
+token), full pipeline runs for `PASS_AUTO`, `NEEDS_REVIEW`, and
+`UNSUPPORTED`, signed-manifest verification, and deterministic replay
+(same input + pack + engine version → byte-identical output).

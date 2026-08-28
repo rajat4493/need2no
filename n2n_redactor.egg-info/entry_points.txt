@@ -1,2 +1,0 @@
-[console_scripts]
-n2n = n2n.cli:app

@@ -1,36 +1,28 @@
 [project]
-name = "n2n-redactor"
-version = "0.0.1"
-description = "Local-first PAN redaction CLI + API."
+name = "n2n"
+version = "0.1.0"
+description = "N2N — a fail-closed disclosure gate. Certifies a document for release under a declared purpose, with signed evidence, or refuses and says why."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 dependencies = [
-    "pdfplumber>=0.11.0",
     "PyMuPDF>=1.23.0",
+    "pdfplumber>=0.11.0",
     "typer>=0.9.0",
-    "fastapi>=0.110.0",
-    "uvicorn>=0.30.0",
-    "pytesseract>=0.3.10",
-    "Pillow>=10.0.0",
-    "opencv-python>=4.8.0",
-    "ultralytics>=8.1.0",
+    "cryptography>=41.0.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0.0"]
-paddle = ["paddleocr>=2.8.0"]
-easy = ["easyocr>=1.7.1"]
+dev = ["pytest>=8.0.0", "reportlab>=4.0.0"]
 
 [project.scripts]
 n2n = "n2n.cli:app"
 
 [tool.setuptools]
-packages = ["n2n"]
+packages = ["n2n", "n2n.detectors", "n2n.packs"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-norecursedirs = ["_legacy", "build", "dist"]
 
 [build-system]
 requires = ["setuptools>=67.0", "wheel"]
