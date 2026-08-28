@@ -46,25 +46,37 @@ impossible for the CLI to emit an output file on any status other than
 ## Pipeline
 
 1. **Preflight** (`n2n/preflight.py`) — classify the input; reject anything
-   outside Phase 1's supported class immediately.
-2. **Extraction** (`n2n/extract.py`) — native text, layout, metadata, forms,
+   outside Phase 1's supported class immediately. If classification fails,
+   one genuine repair attempt via pikepdf/QPDF (`n2n/repair.py`) — far
+   more capable than anything hand-rolled here at recovering a
+   structurally damaged PDF — before giving up; if it helps, the pipeline
+   proceeds on the repaired bytes, and that's recorded transparently in
+   the manifest's `extraction_methods` (never silent).
+2. **Font trust check** (`n2n/font_trust.py`) — a font with no ToUnicode
+   CMap, or an embedded font program that doesn't even parse, means
+   extracted text can't be trusted to match what's rendered (the literal
+   bug class behind the Epstein-files/Meta v. FTC redaction failures the
+   spec cites). Routes straight to `NEEDS_REVIEW` before extraction runs,
+   using pikepdf for PDF-structure inspection and fontTools to validate
+   the embedded font program.
+3. **Extraction** (`n2n/extract.py`) — native text, layout, metadata, forms,
    annotations, incremental-update history, via PyMuPDF.
-3. **Detection** (`n2n/detectors/`) — structured detectors first
+4. **Detection** (`n2n/detectors/`) — structured detectors first
    (checksum/label-validated), then free-text name candidates, tagged
    separately by confidence tier.
-4. **Policy resolution** (`n2n/policy.py`) — apply the pack's must-hide /
+5. **Policy resolution** (`n2n/policy.py`) — apply the pack's must-hide /
    must-preserve rules; any conflict forces `NEEDS_REVIEW`.
-5. **Transform** (`n2n/transform.py`) — irreversible removal via content
+6. **Transform** (`n2n/transform.py`) — irreversible removal via content
    stream rewrite (PyMuPDF redaction annotations, not an overlay box),
    plus metadata/form/annotation/embedded-file stripping and history
    flattening.
-6. **Independent verification** (`n2n/verify.py`) — reopens the *output*
+7. **Independent verification** (`n2n/verify.py`) — reopens the *output*
    through pdfplumber, a separate library from the one used to extract
    and transform, and checks for residual matches.
-7. **Evidence manifest** (`n2n/manifest.py`) — signed with a local Ed25519
+8. **Evidence manifest** (`n2n/manifest.py`) — signed with a local Ed25519
    keypair (`n2n/keys.py`, generated on first run, customer-owned — no
    hosted signing service).
-8. **Release decision** — only `PASS_AUTO` releases a file.
+9. **Release decision** — only `PASS_AUTO` releases a file.
 
 ## Installation
 
@@ -170,13 +182,20 @@ real bugs before this reached a clean pass:
    separator match to a small set of dash-like characters, applied
    consistently in both the detector's scan pattern and its normalizer.
 
-**Known gap, not yet covered:** a font with a broken or missing
+**Previously a known gap, now closed:** a font with a broken or missing
 `ToUnicode` CMap, where the extracted text doesn't match the rendered
 glyphs at all (the literal bug class behind the Epstein-files and Meta v.
-FTC redaction failures cited in the build spec). Constructing a minimal
-repro needs a deliberately malformed embedded font rather than PyMuPDF's
-standard text insertion, so it's flagged here for the Phase 2 corpus
-rather than solved in this pass.
+FTC redaction failures cited in the build spec). pikepdf (direct
+PDF-structure editing) and a synthetic minimal font built in-process with
+fontTools (no external file dependency) made an actual repro possible —
+see `n2n/font_trust.py` and `tests/test_font_trust.py`. A document with
+such a font now routes to `NEEDS_REVIEW` before detection even runs,
+rather than silently trusting text that might not match what's on the
+page. This doesn't prove a *present* ToUnicode mapping is semantically
+correct, only that the two cheap, well-defined failure modes it checks
+(missing entirely, or an unparseable embedded font program) aren't
+present — a deliberately-wrong-but-present mapping is a harder, deeper
+version of this same bug class and remains unaddressed.
 
 ## Determinism testing (`tests/test_transform_id_determinism.py`)
 
@@ -195,3 +214,23 @@ Fixed with a proper parser for both PDF string forms (`_find_pdf_string_end`
 in `n2n/transform.py`), plus a 40-iteration stress test
 (`test_deterministic_replay_holds_over_many_runs`) so a bug with this kind
 of low, non-uniform trigger rate gets caught by CI odds, not by luck.
+
+## Malformed-PDF repair and font trust (`n2n/repair.py`, `n2n/font_trust.py`)
+
+Two hardening passes built on well-established open-source PDF tooling
+rather than hand-rolled parsing:
+
+- **Repair.** A document preflight can't classify gets one genuine second
+  attempt via pikepdf/QPDF before being refused — QPDF's repair handling
+  is far more battle-tested than anything built here for xref-table
+  damage or dangling object references. In practice PyMuPDF's own
+  repair-on-open already recovers most simple truncation, so this mostly
+  helps a narrower class of structural corruption; the orchestration
+  logic (try repair, re-classify the result, use it only if it's now
+  genuinely supported, clean up the temp file either way) is covered
+  directly in `tests/test_repair.py`. Never silent: a repaired document's
+  manifest records `pikepdf_repair_applied` in `extraction_methods`.
+- **Font trust.** See the "previously a known gap" note above — this is
+  the fix for the `ToUnicode` gap, using pikepdf for PDF-structure
+  inspection and fontTools to validate embedded TrueType/OpenType font
+  programs.

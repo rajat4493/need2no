@@ -4,19 +4,22 @@ permitted to mint a release token — see n2n/output_gate.py.
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from typing import Optional
 
 from n2n import ENGINE_VERSION
 from n2n.detectors import STRUCTURAL_DETECTORS, detect_name_header_candidates
 from n2n.extract import extract_native, group_spans_into_lines
+from n2n.font_trust import check_font_trust
 from n2n.keys import load_or_create_keypair
 from n2n.manifest import build_manifest, write_manifest_bytes
 from n2n.models import DecisionReport, DocumentInfo, Finding, VerificationResult
 from n2n.output_gate import mint_release_token, write_certified_output
 from n2n.packs.registry import get_pack
 from n2n.policy import Pack, resolve
-from n2n.preflight import classify
+from n2n.preflight import classify, classify_bytes
+from n2n.repair import attempt_repair
 from n2n.status import ReleaseStatus
 from n2n.transform import redact_document
 from n2n.verify import verify_output
@@ -35,6 +38,27 @@ def run(
 
     # Stage 1: preflight
     preflight = classify(input_path)
+    repaired_temp_path: Optional[Path] = None
+    working_path = input_path
+    repair_applied = False
+
+    if not preflight.supported:
+        # A structurally damaged (not merely unsupported-by-design) PDF
+        # gets one genuine second attempt via pikepdf/QPDF repair before
+        # being refused — never silent: if this changes the outcome, it's
+        # recorded in document_info.extraction_methods (spec 5.5).
+        repaired_bytes = attempt_repair(input_path)
+        if repaired_bytes is not None:
+            repaired_preflight = classify_bytes(repaired_bytes)
+            if repaired_preflight.supported:
+                fd = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+                fd.write(repaired_bytes)
+                fd.close()
+                repaired_temp_path = Path(fd.name)
+                working_path = repaired_temp_path
+                preflight = repaired_preflight
+                repair_applied = True
+
     if not preflight.supported:
         return _finish(
             status=ReleaseStatus.UNSUPPORTED,
@@ -48,8 +72,46 @@ def run(
         )
 
     try:
+        # Stage 1.5: font trust check — a font with no ToUnicode mapping,
+        # or an embedded font program that doesn't even parse, means the
+        # extracted text can't be trusted to match what's rendered on the
+        # page (the literal bug class behind the Epstein-files and Meta
+        # v. FTC redaction failures cited in the build spec). Detection
+        # built on untrustworthy text is worse than no detection at all,
+        # so this routes straight to NEEDS_REVIEW before extraction even
+        # runs, rather than silently trusting text that might be wrong.
+        font_issues = check_font_trust(working_path)
+        if font_issues:
+            issue_summary = "; ".join(
+                f"page {i.page + 1}, font '{i.font_name}': {i.reason}" for i in font_issues
+            )
+            return _finish(
+                status=ReleaseStatus.NEEDS_REVIEW,
+                pack=pack,
+                reasons=[
+                    "Document uses one or more fonts whose extracted text cannot be "
+                    f"trusted to match the rendered content: {issue_summary}"
+                ],
+                findings=[],
+                document_info=None,
+                verification=None,
+                input_bytes=input_bytes,
+                output_bytes=None,
+            )
+
         # Stage 2: extraction
-        extraction = extract_native(input_path)
+        extraction = extract_native(working_path)
+        if repair_applied:
+            # Transparency, not silence: a repaired document is certified
+            # (or refused) exactly like any other from here on, but the
+            # manifest records that repair happened.
+            extraction.document_info = DocumentInfo(
+                **{
+                    **extraction.document_info.__dict__,
+                    "extraction_methods": extraction.document_info.extraction_methods
+                    + ("pikepdf_repair_applied",),
+                }
+            )
 
         # Stage 3: detection
         lines = group_spans_into_lines(extraction.spans)
@@ -115,7 +177,7 @@ def run(
             )
 
         # Stage 5: transform (irreversible removal)
-        redacted_bytes = redact_document(input_path, resolution.to_remove)
+        redacted_bytes = redact_document(working_path, resolution.to_remove)
 
         # Stage 6: independent verification (separate code path)
         verification = verify_output(redacted_bytes, resolution.to_remove)
@@ -173,6 +235,9 @@ def run(
             input_bytes=input_bytes,
             output_bytes=None,
         )
+    finally:
+        if repaired_temp_path is not None:
+            repaired_temp_path.unlink(missing_ok=True)
 
 
 def _finish(

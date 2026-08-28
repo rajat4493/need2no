@@ -24,9 +24,12 @@ class PreflightResult:
 def classify(path: Path) -> PreflightResult:
     if not path.exists():
         return PreflightResult("missing", "Input file does not exist.", False)
+    return classify_bytes(path.read_bytes())
 
+
+def classify_bytes(data: bytes) -> PreflightResult:
     try:
-        doc = fitz.open(path)
+        doc = fitz.open(stream=data, filetype="pdf")
     except Exception as exc:  # noqa: BLE001 - any open failure means corrupted/unreadable
         return PreflightResult("corrupted", f"Could not open document: {exc}", False)
 

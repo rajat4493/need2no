@@ -13,6 +13,8 @@ dependencies = [
     "fastapi>=0.110.0",
     "uvicorn>=0.30.0",
     "python-multipart>=0.0.9",
+    "pikepdf>=8.0.0",
+    "fonttools>=4.50.0",
 ]
 
 [project.optional-dependencies]
