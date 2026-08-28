@@ -158,6 +158,39 @@ The UI shows per-finding outcomes distinctly for a refusal
 (*"Removed"*) rather than one blended state, and never renders a
 confidence score anywhere — both required by spec section 6.
 
+## MCP server (`n2n mcp`)
+
+```bash
+n2n mcp
+```
+
+Runs an MCP server over stdio so an AI agent can call N2N directly as a
+tool — `list_packs` and `redact_document(input_path, pack_id,
+output_path=None, manifest_path=None, dry_run=False)`. Output paths
+default to `<input>.safe.pdf` / `<input>.safe.n2n.json` next to the input
+file if not given. Returns the same decision report as the CLI/API (no
+raw sensitive text in findings, same five-state model).
+
+This is a **different trust model** than `n2n serve`'s HTTP API and does
+**not** use its API-key auth: stdio MCP servers are spawned directly by
+the calling agent as a local subprocess, the same trust boundary the CLI
+already has (if the agent can spawn this process, it already has the
+file access it's asking N2N to use). A network-exposed (HTTP/SSE) MCP
+deployment would need the same auth layer the HTTP API has — not wired
+up here, a known gap for a future remote/SaaS MCP deployment.
+
+Tested by spawning the real `n2n mcp` subprocess and speaking actual
+JSON-RPC over stdio (`tests/test_mcp_server.py`), not just calling the
+underlying Python functions — which is how a real bug was caught before
+this ever shipped: PyMuPDF's deprecated `import fitz` compatibility shim
+prints a warning straight to stdout at import time, and stdio MCP
+transport requires stdout to carry nothing but protocol messages. That
+corrupted the very first real client handshake ("Failed to parse JSONRPC
+message from server"). Fixed by switching every `import fitz` to
+`import pymupdf as fitz` throughout the codebase, not by suppressing the
+symptom — the non-deprecated import doesn't print anything, and it's the
+more correct import to begin with.
+
 ## Tests
 
 ```bash

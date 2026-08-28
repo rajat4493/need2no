@@ -17,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import fitz
+import pymupdf as fitz
 
 from n2n import pipeline
 from n2n.repair import attempt_repair

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import io
 
-import fitz
+import pymupdf as fitz
 import pdfplumber
 import pytest
 

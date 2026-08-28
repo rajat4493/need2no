@@ -60,7 +60,7 @@ def test_dry_run_never_writes_output(clean_statement_pdf, tmp_path):
 
 
 def test_redacted_output_removes_sensitive_text_content(clean_statement_pdf, tmp_path):
-    import fitz
+    import pymupdf as fitz
 
     out = tmp_path / "out.pdf"
     manifest_path = tmp_path / "out.n2n.json"

@@ -45,6 +45,17 @@ def serve(
     uvicorn.run("n2n.webapp.server:app", host=host, port=port)
 
 
+@app.command()
+def mcp() -> None:
+    """Run the MCP server (stdio transport) so an AI agent can call N2N
+    as a tool: list_packs, redact_document. Same trust model as the CLI —
+    no API key, since the calling agent already has local file access by
+    virtue of being able to spawn this process."""
+    from n2n.mcp_server import main as mcp_main
+
+    mcp_main()
+
+
 @apikey_app.command("create")
 def apikey_create(name: str = typer.Option(..., "--name", help="A label for this key")) -> None:
     """Create a new API key. The plaintext is shown exactly once."""
