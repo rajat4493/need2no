@@ -103,7 +103,7 @@ A non-`PASS_AUTO` run exits with a non-zero status code and writes no
 output file — check `--dry-run` output or the JSON report on stdout for
 plain-language reasons.
 
-## Web UI (`n2n serve`)
+## Web UI and API (`n2n serve`)
 
 ```bash
 n2n serve --port 8000
@@ -114,6 +114,31 @@ Runs a local upload -> instant result -> findings -> download flow at
 telemetry leaves the machine, and nothing is persisted beyond an
 in-memory, TTL-expiring session that exists only so a `PASS_AUTO` result
 can be downloaded (`n2n/webapp/sessions.py`).
+
+### Authentication
+
+Every `/v1/*` endpoint requires an API key (`n2n/auth.py`) — one auth
+model serves both the manual web UI (which prompts for a key and stores
+it in the browser's `localStorage`) and automation/API clients, rather
+than two separate systems. Keys are stored locally as a SHA-256 hash
+only (`~/.n2n/keys/api_keys.json`, `0600` permissions) — the plaintext is
+shown exactly once, at creation.
+
+```bash
+n2n apikey create --name yourself   # prints the plaintext once
+n2n apikey list                     # id, name, status, created/last-used — never the key itself
+n2n apikey revoke <id>               # permanent
+```
+
+First run of `n2n serve` with no keys yet creates one automatically and
+prints it, so there's still a one-command happy path. Requests also carry
+a per-key rate limit (`n2n/webapp/ratelimit.py`, 30 req/min by default) —
+**in-process only**, correct for this single-instance local/self-hosted
+deployment but not sufficient for a multi-instance SaaS deployment, where
+limits would need to be shared externally (Redis or similar) — a known
+gap, not solved here.
+
+### Endpoints
 
 - **`GET /v1/packs`** — list purpose packs.
 - **`POST /v1/redact?pack_id=...`** (multipart `file`) — runs the full

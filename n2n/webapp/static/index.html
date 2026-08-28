@@ -115,7 +115,7 @@
     gap: 10px;
     margin-top: 14px;
   }
-  .downloads a {
+  .downloads button {
     padding: 9px 16px;
     border-radius: 6px;
     border: 1px solid var(--border);
@@ -124,6 +124,39 @@
     text-decoration: none;
     font-weight: 600;
     font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .key-panel {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .key-panel input {
+    flex: 1;
+    min-width: 240px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+  }
+  .key-status {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .key-status.error { color: var(--refuse); }
+  .change-key {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    margin-top: 10px;
   }
   table {
     width: 100%;
@@ -156,7 +189,18 @@
   <p>A fail-closed disclosure gate. Every document leaves with proof — or it doesn't leave.</p>
 </header>
 <main>
-  <div class="panel">
+  <div class="panel" id="keyPanel">
+    <div class="key-panel">
+      <input type="password" id="keyInput" placeholder="Paste your API key (n2n_live_...)">
+      <button id="saveKeyBtn">Save key</button>
+    </div>
+    <div class="key-status" id="keyStatus">
+      Get a key by running <code>n2n apikey create --name yourself</code>, or use the one
+      printed when you started <code>n2n serve</code>.
+    </div>
+  </div>
+
+  <div class="panel hidden" id="mainPanel">
     <div class="drop" id="drop">
       <div>Drop a PDF here, or click to choose one</div>
       <div class="filename" id="filename"></div>
@@ -166,14 +210,15 @@
       <select id="packSelect"></select>
       <button id="submitBtn" disabled>Check document</button>
     </div>
+    <button class="change-key" id="changeKeyBtn">Use a different API key</button>
   </div>
 
   <div class="status-banner" id="statusBanner">
     <div class="label" id="statusLabel"></div>
     <div class="reason" id="statusReason"></div>
     <div class="downloads hidden" id="downloads">
-      <a id="downloadOutput" href="#">Download safe PDF</a>
-      <a id="downloadManifest" href="#">Download evidence manifest</a>
+      <button id="downloadOutput">Download safe PDF</button>
+      <button id="downloadManifest">Download evidence manifest</button>
     </div>
   </div>
 
@@ -194,6 +239,13 @@
 </main>
 
 <script>
+const keyPanel = document.getElementById('keyPanel');
+const keyInput = document.getElementById('keyInput');
+const saveKeyBtn = document.getElementById('saveKeyBtn');
+const keyStatus = document.getElementById('keyStatus');
+const changeKeyBtn = document.getElementById('changeKeyBtn');
+const mainPanel = document.getElementById('mainPanel');
+
 const dropEl = document.getElementById('drop');
 const fileInput = document.getElementById('fileInput');
 const filenameEl = document.getElementById('filename');
@@ -209,6 +261,7 @@ const findingsPanel = document.getElementById('findingsPanel');
 const findingsBody = document.getElementById('findingsBody');
 
 let selectedFile = null;
+let currentToken = null;
 
 const STATUS_META = {
   PASS_AUTO:        { cls: 'pass',   label: 'Certified — safe to release' },
@@ -218,8 +271,91 @@ const STATUS_META = {
   PROCESSING_ERROR:   { cls: 'refuse', label: 'Processing error — not released' },
 };
 
+// --- API key storage (per-browser only; never sent anywhere but this
+// server's own /v1/* endpoints) ---------------------------------------
+
+const KEY_STORAGE = 'n2n_api_key';
+
+function getStoredKey() {
+  try { return localStorage.getItem(KEY_STORAGE) || ''; } catch (e) { return ''; }
+}
+function setStoredKey(key) {
+  try { localStorage.setItem(KEY_STORAGE, key); } catch (e) { /* private mode etc. */ }
+}
+function clearStoredKey() {
+  try { localStorage.removeItem(KEY_STORAGE); } catch (e) { /* ignore */ }
+}
+
+function showKeyPanel(message, isError) {
+  keyPanel.classList.remove('hidden');
+  mainPanel.classList.add('hidden');
+  if (message) {
+    keyStatus.textContent = message;
+    keyStatus.classList.toggle('error', !!isError);
+  }
+}
+function showMainPanel() {
+  keyPanel.classList.add('hidden');
+  mainPanel.classList.remove('hidden');
+}
+
+async function authFetch(url, options) {
+  options = options || {};
+  const key = getStoredKey();
+  const headers = Object.assign({}, options.headers || {});
+  if (key) headers['Authorization'] = 'Bearer ' + key;
+  const res = await fetch(url, Object.assign({}, options, { headers }));
+  if (res.status === 401) {
+    clearStoredKey();
+    showKeyPanel('That API key was rejected. Enter a valid one.', true);
+  }
+  return res;
+}
+
+saveKeyBtn.addEventListener('click', async () => {
+  const key = keyInput.value.trim();
+  if (!key) return;
+  setStoredKey(key);
+  keyInput.value = '';
+  if (await loadPacks()) {
+    showMainPanel();
+  }
+  // On failure loadPacks (via authFetch) already re-shows the key panel
+  // with an error.
+});
+
+changeKeyBtn.addEventListener('click', () => {
+  clearStoredKey();
+  showKeyPanel('Enter your API key.', false);
+});
+
+async function triggerDownload(url, filename) {
+  const res = await authFetch(url);
+  if (!res.ok) {
+    alert('Download failed (status ' + res.status + ').');
+    return;
+  }
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+downloadOutput.addEventListener('click', () => {
+  if (currentToken) triggerDownload(`/v1/download/${currentToken}/output.pdf`, 'safe.pdf');
+});
+downloadManifest.addEventListener('click', () => {
+  if (currentToken) triggerDownload(`/v1/download/${currentToken}/manifest.json`, 'safe.n2n.json');
+});
+
 async function loadPacks() {
-  const res = await fetch('/v1/packs');
+  const res = await authFetch('/v1/packs');
+  if (!res.ok) return false;
   const packs = await res.json();
   packSelect.innerHTML = '';
   for (const pack of packs) {
@@ -229,6 +365,7 @@ async function loadPacks() {
     opt.title = pack.description;
     packSelect.appendChild(opt);
   }
+  return true;
 }
 
 function pickFile(file) {
@@ -259,7 +396,8 @@ submitBtn.addEventListener('click', async () => {
     const form = new FormData();
     form.append('file', selectedFile);
     const url = `/v1/redact?pack_id=${encodeURIComponent(packSelect.value)}`;
-    const res = await fetch(url, { method: 'POST', body: form });
+    const res = await authFetch(url, { method: 'POST', body: form });
+    if (!res.ok && res.status === 401) return; // key panel already shown
     const report = await res.json();
     render(report);
   } catch (err) {
@@ -280,10 +418,9 @@ function render(report) {
     : 'No further detail available.';
   statusBanner.className = `status-banner show ${meta.cls}`;
 
-  if (report.status === 'PASS_AUTO' && report.download_token) {
+  currentToken = (report.status === 'PASS_AUTO') ? report.download_token : null;
+  if (currentToken) {
     downloads.classList.remove('hidden');
-    downloadOutput.href = `/v1/download/${report.download_token}/output.pdf`;
-    downloadManifest.href = `/v1/download/${report.download_token}/manifest.json`;
   } else {
     downloads.classList.add('hidden');
   }
@@ -332,7 +469,14 @@ function actionLabel(action, status) {
   return labels[action] || action;
 }
 
-loadPacks();
+async function init() {
+  if (getStoredKey() && (await loadPacks())) {
+    showMainPanel();
+    return;
+  }
+  showKeyPanel('', false);
+}
+init();
 </script>
 </body>
 </html>
