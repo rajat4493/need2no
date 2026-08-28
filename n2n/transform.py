@@ -91,6 +91,51 @@ def _make_id_deterministic(pdf_bytes: bytes) -> bytes:
     return pdf_bytes[:marker] + replacement + pdf_bytes[array_end:]
 
 
+# Fixed width, in PDF points, of the drawn redaction box. See
+# _fixed_width_box for why this is a constant rather than a function of
+# the removed content.
+REDACTION_BOX_WIDTH = 12.0
+
+
+def _fixed_width_box(rect: fitz.Rect) -> fitz.Rect:
+    """Return the *drawn* redaction box: a constant width, independent of
+    the removed content.
+
+    Defends against the glyph-width side channel published as "Story
+    Beyond the Eye: Glyph Positions Break PDF Text Redaction" (PETS
+    2023). Even when the underlying text is genuinely excised, a black
+    box whose width matches the removed glyphs leaks the sum of their
+    advance widths. Measured against this engine before the fix, five
+    different 8-digit account numbers produced five distinct box widths,
+    and for values like 11111111 the width alone narrowed 10^8
+    candidates to exactly one.
+
+    Quantizing the width to a coarse grid was tried first and rejected:
+    it is font- and size-dependent luck. Swept across real fonts, some
+    combinations still isolated a rare width alone in its own bucket and
+    reopened the channel completely (Boldonse at 11pt: still uniquely
+    identifying), and safety was not even monotonic in the quantum — a
+    coarser grid could be dramatically worse than a finer one. A control
+    whose effectiveness depends on the victim's font is not a control.
+
+    A constant width has none of that: the box is the same for every
+    value, in every font, at every size, so it carries zero information
+    about what was removed. The field's identity and location are
+    already disclosed in the evidence manifest, so the box needs to
+    convey nothing further.
+
+    The constant is deliberately narrower than any realistic redacted
+    field (the narrowest 8-digit rendering measured across available
+    fonts at 8-14pt was 17pt), so the box stays inside the excised rect
+    and can never cover text that was *not* removed — which would
+    recreate the "black box over live text" failure this product exists
+    to prevent. The clamp is a safety floor, not the normal path.
+    """
+    width = rect.x1 - rect.x0
+    drawn = min(REDACTION_BOX_WIDTH, width)
+    return fitz.Rect(rect.x0, rect.y0, rect.x0 + drawn, rect.y1)
+
+
 def redact_document(input_path: Path, findings_to_remove: list[Finding]) -> bytes:
     doc = fitz.open(input_path)
     try:
@@ -100,17 +145,25 @@ def redact_document(input_path: Path, findings_to_remove: list[Finding]) -> byte
 
         for page_index, page_findings in by_page.items():
             page = doc[page_index]
+            boxes_to_draw: list[fitz.Rect] = []
             for finding in page_findings:
                 rect = fitz.Rect(*finding.bbox)
                 rect.x0 -= 1
                 rect.y0 -= 1
                 rect.x1 += 1
                 rect.y1 += 1
-                page.add_redact_annot(rect, fill=REDACT_FILL)
+                # Excise with the TIGHT rect (removes exactly the detected
+                # content and nothing else), but draw NO fill here — the
+                # visible box is drawn separately below at a constant
+                # width. See _fixed_width_box.
+                page.add_redact_annot(rect)
+                boxes_to_draw.append(_fixed_width_box(rect))
             page.apply_redactions(
                 images=fitz.PDF_REDACT_IMAGE_REMOVE,
                 graphics=fitz.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
             )
+            for box in boxes_to_draw:
+                page.draw_rect(box, color=REDACT_FILL, fill=REDACT_FILL)
 
         # Strip metadata.
         doc.set_metadata({})

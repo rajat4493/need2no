@@ -273,6 +273,60 @@ in `n2n/transform.py`), plus a 40-iteration stress test
 (`test_deterministic_replay_holds_over_many_runs`) so a bug with this kind
 of low, non-uniform trigger rate gets caught by CI odds, not by luck.
 
+## Unredaction resistance (`tests/test_unredaction_resistance.py`)
+
+Validated against the techniques actually used to un-redact real
+documents, using independent adversaries rather than only our own
+assertions — including **x-ray** (`freelawproject/x-ray`), a third-party
+bad-redaction detector of the same class that publicly demonstrated the
+DOJ Epstein files failures. Every adversary runs a **positive control**
+first: a deliberately badly-redacted document it must successfully crack,
+so a clean result on N2N's output proves the tool can see, rather than
+proving the test is blind.
+
+That control discipline mattered. An earlier version of this check
+searched the raw file bytes for the sensitive string — a meaningless
+test, because PyMuPDF stores page text hex-encoded (`<536f7274...>`), so
+it would have found nothing even in a completely unredacted document.
+
+Covered: text-under-rectangle (the Epstein failure), deep content-stream
+decode including hex strings, copy-paste extraction, metadata/XMP,
+retained prior revisions via incremental updates, and leftover
+annotations/form fields.
+
+### The glyph-width side channel (PETS 2023) — found and fixed here
+
+Testing against ["Story Beyond the Eye: Glyph Positions Break PDF Text
+Redaction"](https://petsymposium.org/popets/2023/popets-2023-0069.pdf)
+(Bland, PETS 2023) found a **real vulnerability in this engine**. Even
+with the text genuinely excised, the drawn redaction box's width tracked
+the removed glyphs, leaking the sum of their advance widths. In a
+proportional-figure font, five different 8-digit account numbers produced
+five distinct box widths — and for values like `11111111` the width alone
+narrowed 10^8 candidates to **exactly one**. Worst case across all values
+was still a 174x reduction.
+
+The fix (`_fixed_width_box` in `n2n/transform.py`) draws a box of
+**constant width**, independent of content, so it carries zero
+information about what was removed. Excision still uses the exact
+detected rect, so removal remains precise; only the drawn box is
+normalised, and it is clamped to stay inside the excised region so it can
+never cover text that was *not* removed.
+
+Quantizing the width to a coarse grid was tried first **and rejected on
+measurement**: it is font- and size-dependent luck. Swept across real
+fonts, some combinations still isolated a rare width alone in its own
+bucket and reopened the channel completely (Boldonse at 11pt: still
+uniquely identifying), and safety was not even monotonic in the quantum —
+a coarser grid could be dramatically worse than a finer one, because
+sub-quantum content fell through to its exact width. A control whose
+effectiveness depends on the victim's font is not a control.
+
+**Still open:** this closes the *box-width* channel. The paper's broader
+attack surface also includes sub-pixel positioning of surrounding glyphs,
+which is not addressed — closing that needs layout-aware normalisation of
+neighbouring text positions.
+
 ## Malformed-PDF repair and font trust (`n2n/repair.py`, `n2n/font_trust.py`)
 
 Two hardening passes built on well-established open-source PDF tooling

@@ -26,6 +26,7 @@ above, recovers it instantly.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pikepdf
 import pymupdf as fitz
@@ -190,3 +191,88 @@ def test_certified_output_has_no_annotations_or_form_fields(n2n_output):
             assert page.first_widget is None
     finally:
         doc.close()
+
+
+# ---------------------------------------------------------------------------
+# PETS 2023 glyph-width side channel — "Story Beyond the Eye: Glyph
+# Positions Break PDF Text Redaction". Even with the text genuinely
+# excised, a redaction box whose width tracks the removed glyphs leaks
+# the sum of their advance widths. In a proportional-figure font that was
+# measured, before the fix, to narrow 10^8 candidate account numbers to
+# exactly one for values like 11111111.
+# ---------------------------------------------------------------------------
+
+PROPORTIONAL_DIGIT_FONT = (
+    "/mnt/skills/examples/canvas-design/canvas-fonts/ArsenalSC-Regular.ttf"
+)
+
+
+def _redaction_box_widths(path) -> list[float]:
+    import re as _re
+
+    with pikepdf.open(path) as pdf:
+        for obj in pdf.objects:
+            if not isinstance(obj, pikepdf.Stream):
+                continue
+            data = bytes(obj.read_bytes()).decode("latin-1")
+            if " re" in data:
+                return [
+                    round(float(m[2]), 3)
+                    for m in _re.findall(r"([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+) re", data)
+                ]
+    return []
+
+
+def _statement_in_font(path, account, font_path, size=11):
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((60, 60), "ACME BANK PLC", fontsize=size + 1, fontname="AR", fontfile=font_path)
+    page.insert_text((60, 90), "Sort code: 12-34-56", fontsize=size, fontname="AR", fontfile=font_path)
+    page.insert_text((60, 115), f"Account number: {account}", fontsize=size, fontname="AR", fontfile=font_path)
+    page.insert_text((60, 140), "Statement of account for the period shown", fontsize=size, fontname="AR", fontfile=font_path)
+    doc.save(path)
+    doc.close()
+
+
+@pytest.mark.skipif(
+    not Path(PROPORTIONAL_DIGIT_FONT).exists(),
+    reason="proportional-digit font fixture not available in this environment",
+)
+@pytest.mark.parametrize("size", [9, 11, 14])
+def test_redaction_box_width_does_not_vary_with_the_redacted_value(tmp_path, size):
+    """The box width must be identical for every account number. If it
+    varies, an attacker measuring it recovers the sum of the digits'
+    advance widths and can narrow — sometimes uniquely determine — the
+    value, without ever recovering a single character of text."""
+    widths = set()
+    for account in ["11111111", "00000000", "99999999", "10101010", "12345678"]:
+        src = tmp_path / f"src_{account}_{size}.pdf"
+        _statement_in_font(src, account, PROPORTIONAL_DIGIT_FONT, size)
+        out = tmp_path / f"out_{account}_{size}.pdf"
+        report = pipeline.run(src, PACK_ID, out, tmp_path / f"m_{account}_{size}.json")
+        if report.status != "PASS_AUTO":
+            continue
+        boxes = _redaction_box_widths(out)
+        assert boxes, "expected at least one drawn redaction box"
+        widths.update(boxes)
+    assert len(widths) == 1, (
+        f"redaction box width varies with the redacted value {sorted(widths)} — "
+        "this is the PETS 2023 glyph-width side channel"
+    )
+
+
+def test_drawn_box_never_exceeds_the_excised_region(tmp_path):
+    """The constant-width box must stay inside the area whose text was
+    actually removed. A box wider than the excision would visually cover
+    text that is still present and extractable — recreating the exact
+    'black box over live text' failure this product exists to prevent."""
+    from n2n.transform import REDACTION_BOX_WIDTH, _fixed_width_box
+
+    narrow = fitz.Rect(10, 10, 10 + (REDACTION_BOX_WIDTH / 2), 20)
+    drawn = _fixed_width_box(narrow)
+    assert drawn.x1 <= narrow.x1
+
+    wide = fitz.Rect(10, 10, 10 + (REDACTION_BOX_WIDTH * 4), 20)
+    drawn_wide = _fixed_width_box(wide)
+    assert drawn_wide.x1 <= wide.x1
+    assert round(drawn_wide.x1 - drawn_wide.x0, 6) == REDACTION_BOX_WIDTH
