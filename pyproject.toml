@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0.0", "reportlab>=4.0.0", "httpx>=0.27.0", "pytest-asyncio>=0.24.0"]
+dev = ["pytest>=8.0.0", "reportlab>=4.0.0", "httpx>=0.27.0", "pytest-asyncio>=0.24.0", "x-ray>=0.3.0"]
 
 [project.scripts]
 n2n = "n2n.cli:app"
