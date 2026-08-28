@@ -9,15 +9,31 @@ exactly why.
 
 ## Phase 1 scope
 
-Native-text UK bank statement PDFs only. Structured identifiers only: UK
-sort codes, account numbers (label-validated), GB IBANs (mod-97 checksum),
-payment card numbers (Luhn checksum, clearly formatted). Free-text
-name/address candidates are always review-tier — never auto-resolved (see
-`n2n/detectors/name_header.py`).
+Native-text PDFs only — scanned/photographed documents and OCR are out of
+scope for Phase 1. Structured identifiers only, each checksum- or
+label-validated, never a bare pattern match: UK sort codes, account
+numbers, GB IBANs (mod-97), payment card numbers (Luhn, clearly
+formatted — standard 4-4-4-4 and Amex's 4-6-5 grouping), and card expiry
+dates. Free-text name/address candidates are always review-tier — never
+auto-resolved (see `n2n/detectors/name_header.py`).
 
-Scanned/photographed documents, OCR, and purpose packs beyond
-`uk.bank_statement.share_with_ai` are out of scope for Phase 1 (see the
-build spec, sections 8 and 10).
+Two purpose packs exist, sharing the same detectors/pipeline/transform/
+verification machinery — depth on one proven engine, not a second one:
+
+- **`uk.bank_statement.share_with_ai`** — sort code, account number,
+  IBAN, card number, card expiry.
+- **`pci.card_data.share_with_ai`** — card number and expiry, for any
+  document carrying payment-card data (receipts, order confirmations,
+  cardholder forms), not just bank statements. Does not detect CVV/CVC —
+  those should never be present on a stored document under PCI DSS, and a
+  reliable label-free detector for a bare 3-4 digit code doesn't exist
+  yet.
+
+Purpose packs beyond these two, and anything requiring a vision/ML model
+(e.g. face or ID-card detection), are out of scope for now (see the build
+spec, sections 8 and 10) — the latter also carries a licensing trap the
+spec explicitly flags: avoid Ultralytics YOLO (AGPL-3.0) if that's ever
+added.
 
 ## The five release states
 
@@ -161,3 +177,21 @@ FTC redaction failures cited in the build spec). Constructing a minimal
 repro needs a deliberately malformed embedded font rather than PyMuPDF's
 standard text insertion, so it's flagged here for the Phase 2 corpus
 rather than solved in this pass.
+
+## Determinism testing (`tests/test_transform_id_determinism.py`)
+
+The deterministic-replay guarantee (spec 5.7) was itself found broken by
+stress-testing rather than by inspection: a two-run comparison
+(`tests/test_pipeline.py`'s original replay test) passed reliably, but
+running the *same* input through the pipeline 200-400 times in a loop
+produced up to 3 distinct output files. Root cause: MuPDF stamps a fresh,
+random trailer `/ID` on every save (the second of its two entries is
+*meant* to change per revision, per PDF spec convention), and can encode
+either entry as a hex string (`<...>`) or a PDF literal string (`(...)`,
+with backslash escapes) — the original neutralization in
+`n2n/transform.py` only recognized the hex form via regex, and silently
+left MuPDF's own random ID untouched whenever it chose the other one.
+Fixed with a proper parser for both PDF string forms (`_find_pdf_string_end`
+in `n2n/transform.py`), plus a 40-iteration stress test
+(`test_deterministic_replay_holds_over_many_runs`) so a bug with this kind
+of low, non-uniform trigger rate gets caught by CI odds, not by luck.

@@ -158,7 +158,7 @@
 <main>
   <div class="panel">
     <div class="drop" id="drop">
-      <div>Drop a UK bank statement PDF here, or click to choose one</div>
+      <div>Drop a PDF here, or click to choose one</div>
       <div class="filename" id="filename"></div>
       <input type="file" id="fileInput" accept="application/pdf">
     </div>
@@ -313,6 +313,7 @@ function fieldLabel(field) {
     account_number: 'Account number',
     iban: 'IBAN',
     card_number: 'Card number',
+    card_expiry: 'Card expiry date',
     name_header: 'Possible name/address',
   };
   return labels[field] || field;

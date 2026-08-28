@@ -106,3 +106,21 @@ def test_deterministic_replay_same_status_and_output_hash(clean_statement_pdf, t
     assert report1.manifest["output_hash"] == report2.manifest["output_hash"]
     assert report1.manifest["deterministic_replay_id"] == report2.manifest["deterministic_replay_id"]
     assert out1.read_bytes() == out2.read_bytes()
+
+
+def test_deterministic_replay_holds_over_many_runs(clean_statement_pdf, tmp_path):
+    """A two-run comparison isn't enough to catch every source of PDF-
+    library-level non-determinism: MuPDF's trailer /ID handling turned out
+    to vary its encoding (hex vs. a PDF literal string) rarely enough that
+    a single repeat easily missed it, while the underlying output bytes
+    still genuinely differed across runs (spec 5.7). Run enough times that
+    a bug with that kind of low, non-uniform trigger rate gets caught
+    reliably instead of by luck."""
+    hashes = set()
+    for i in range(40):
+        out = tmp_path / f"replay_{i}.pdf"
+        manifest = tmp_path / f"replay_{i}.n2n.json"
+        report = pipeline.run(clean_statement_pdf, "uk.bank_statement.share_with_ai", out, manifest)
+        assert report.status == "PASS_AUTO"
+        hashes.add(out.read_bytes())
+    assert len(hashes) == 1, f"expected byte-identical output every run, got {len(hashes)} distinct variants"

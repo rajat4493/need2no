@@ -9,7 +9,6 @@ flattens the document so no prior incremental-update history survives.
 from __future__ import annotations
 
 import hashlib
-import re
 from pathlib import Path
 
 import fitz  # PyMuPDF
@@ -18,21 +17,78 @@ from n2n.models import Finding
 
 REDACT_FILL = (0, 0, 0)
 
-# MuPDF stamps a randomized trailer /ID on every save, which would make
-# byte-identical output impossible even for identical redacted content —
-# breaking the deterministic-replay guarantee (spec 5.7). We replace it
-# with an ID derived from the rest of the document's bytes instead.
-_ID_RE = re.compile(rb"/ID\s*\[\s*<([0-9A-Fa-f]*)>\s*<([0-9A-Fa-f]*)>\s*\]")
+
+def _skip_ws(data: bytes, i: int) -> int:
+    while i < len(data) and data[i : i + 1].isspace():
+        i += 1
+    return i
+
+
+def _find_pdf_string_end(data: bytes, start: int) -> int | None:
+    """`start` points at the opening delimiter of a PDF string object
+    (either `<` for a hex string or `(` for a literal string). Returns the
+    index just past its matching closing delimiter, or None if the object
+    is malformed. Handles a literal string's backslash escapes and
+    (PDF-legal) balanced, unescaped nested parentheses — a plain regex
+    can't do this correctly, and getting it wrong is exactly how the
+    previous hex-only version of this function silently failed to match
+    whenever MuPDF chose to emit an ID as a literal string instead."""
+    if data[start : start + 1] == b"<":
+        end = data.find(b">", start + 1)
+        return None if end == -1 else end + 1
+    if data[start : start + 1] == b"(":
+        depth = 1
+        i = start + 1
+        while i < len(data):
+            ch = data[i : i + 1]
+            if ch == b"\\":
+                i += 2
+                continue
+            if ch == b"(":
+                depth += 1
+            elif ch == b")":
+                depth -= 1
+                if depth == 0:
+                    return i + 1
+            i += 1
+        return None
+    return None
 
 
 def _make_id_deterministic(pdf_bytes: bytes) -> bytes:
-    match = _ID_RE.search(pdf_bytes)
-    if not match:
+    """MuPDF stamps a trailer /ID on every save — the first entry is
+    normally stable (tied to the input file's own original ID), but the
+    second is regenerated fresh and random on every save, by PDF-spec
+    design (it's meant to mark "this specific revision"). Left alone,
+    that breaks the deterministic-replay guarantee (spec 5.7) for
+    otherwise byte-identical redacted content. We replace both entries
+    with one derived from the rest of the document's bytes instead —
+    parsing them properly (see _find_pdf_string_end) since MuPDF can
+    write either a hex `<...>` or literal `(...)` string for each entry,
+    not always hex."""
+    marker = pdf_bytes.rfind(b"/ID")
+    if marker == -1:
         return pdf_bytes
-    blanked = pdf_bytes[: match.start()] + pdf_bytes[match.end() :]
+    i = _skip_ws(pdf_bytes, marker + 3)
+    if pdf_bytes[i : i + 1] != b"[":
+        return pdf_bytes
+    i = _skip_ws(pdf_bytes, i + 1)
+    first_end = _find_pdf_string_end(pdf_bytes, i)
+    if first_end is None:
+        return pdf_bytes
+    j = _skip_ws(pdf_bytes, first_end)
+    second_end = _find_pdf_string_end(pdf_bytes, j)
+    if second_end is None:
+        return pdf_bytes
+    k = _skip_ws(pdf_bytes, second_end)
+    if pdf_bytes[k : k + 1] != b"]":
+        return pdf_bytes
+    array_end = k + 1
+
+    blanked = pdf_bytes[:marker] + pdf_bytes[array_end:]
     digest = hashlib.sha256(blanked).hexdigest().encode("ascii")
     replacement = b"/ID[<" + digest + b"><" + digest + b">]"
-    return pdf_bytes[: match.start()] + replacement + pdf_bytes[match.end() :]
+    return pdf_bytes[:marker] + replacement + pdf_bytes[array_end:]
 
 
 def redact_document(input_path: Path, findings_to_remove: list[Finding]) -> bytes:
