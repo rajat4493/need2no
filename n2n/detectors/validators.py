@@ -6,6 +6,14 @@ from __future__ import annotations
 
 import re
 
+# Dash-like characters a real document's font can substitute for a plain
+# hyphen (en/em dash, minus sign, non-breaking hyphen, middle dot as a
+# font-fallback glyph) — a sort code printed with any of these must still
+# be recognized, not silently missed. Kept last in any character class
+# built from it below so it's never misread as a range operator.
+_DASH_CHARS = "‐‑‒–—−·-"
+DASH_CLASS = "[" + _DASH_CHARS + "]"
+
 SORT_CODE_RE = re.compile(r"^\d{2}-\d{2}-\d{2}$")
 SORT_CODE_LOOSE_RE = re.compile(r"^\d{6}$")
 ACCOUNT_NUMBER_RE = re.compile(r"^\d{8}$")
@@ -17,7 +25,7 @@ SORT_CODE_LABELS = ("sort code", "sortcode")
 
 
 def normalize_sort_code(raw: str) -> str | None:
-    digits = re.sub(r"[\s-]", "", raw)
+    digits = re.sub(r"[\s" + _DASH_CHARS + r"]", "", raw)
     if re.fullmatch(r"\d{6}", digits):
         return f"{digits[0:2]}-{digits[2:4]}-{digits[4:6]}"
     return None

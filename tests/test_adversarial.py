@@ -349,3 +349,54 @@ def test_labelled_value_also_appearing_unlabelled_elsewhere_is_fully_removed(tmp
     assert report.status == "FAILED_VERIFY"
     assert not out.exists()
     assert "account_number" in (report.verification.residual_fields if report.verification else [])
+
+
+# ---------------------------------------------------------------------------
+# 12. Dash-variant separators: a font can substitute an en dash, em dash,
+#     minus sign, or other dash-like glyph for a plain hyphen. The value
+#     must still be recognized, not silently missed because the separator
+#     isn't ASCII "-".
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("dash", ["–", "—", "−", "·"])
+def test_sort_code_with_dash_variant_separator(tmp_path, dash):
+    path = tmp_path / "dashvariant.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((60, 60), "ACME BANK PLC", fontsize=12)
+    page.insert_text((60, 90), f"Sort code: 12{dash}34{dash}56", fontsize=10)
+    page.insert_text((60, 110), f"Account number: {ACCOUNT_NUMBER}", fontsize=10)
+    doc.save(path)
+    doc.close()
+
+    report = _run(path, tmp_path, f"dashvariant_{ord(dash)}")
+    structural = {f.field_id for f in report.findings if f.tier == "structural"}
+    assert "sort_code" in structural, f"sort code with separator {dash!r} was not detected"
+
+
+# ---------------------------------------------------------------------------
+# 13. Mixed page sizes within one document, sensitive data on the
+#     unusually-sized page.
+# ---------------------------------------------------------------------------
+
+
+def test_mixed_page_sizes_findings_still_caught(tmp_path):
+    path = tmp_path / "mixedsize.pdf"
+    doc = fitz.open()
+    page1 = doc.new_page(width=595, height=842)
+    for i in range(20):
+        page1.insert_text((60, 60 + i * 15), f"Transaction line {i} with descriptive filler text", fontsize=9)
+    page2 = doc.new_page(width=300, height=300)
+    page2.insert_text((20, 20), "ACME BANK PLC statement continues on this smaller page", fontsize=8)
+    page2.insert_text((20, 40), f"Sort code: {SORT_CODE}", fontsize=8)
+    page2.insert_text((20, 55), f"Account number: {ACCOUNT_NUMBER}", fontsize=8)
+    for i in range(5):
+        page2.insert_text((20, 80 + i * 15), f"More filler transaction detail text line {i}", fontsize=8)
+    doc.save(path)
+    doc.close()
+
+    report = _run(path, tmp_path, "mixedsize")
+    if report.status == "PASS_AUTO":
+        structural = {f.field_id for f in report.findings if f.tier == "structural"}
+        assert {"sort_code", "account_number"} <= structural

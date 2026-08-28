@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from n2n.detectors.common import compact_line, line_text, spans_for_match, union_bbox
-from n2n.detectors.validators import SORT_CODE_LABELS, normalize_sort_code
+from n2n.detectors.validators import DASH_CLASS, SORT_CODE_LABELS, normalize_sort_code
 from n2n.models import Finding, TextSpan
 
 # Scans the COMPACT (no-separator) line, not the space-joined one: some
@@ -11,8 +11,13 @@ from n2n.models import Finding, TextSpan
 # word-tokens with real gaps between them ("12-" "34-" "56"), which a
 # space-joined match would miss entirely and silently release. Digit
 # boundaries (?<!\d)/(?!\d) do the job word-boundaries would in normal
-# text, since there are no spaces left to anchor on here.
-VALUE_RE = re.compile(r"(?<!\d)\d{2}-\d{2}-\d{2}(?!\d)|(?<!\d)\d{6}(?!\d)")
+# text, since there are no spaces left to anchor on here. The separator
+# accepts any dash-like character a font can substitute for a plain
+# hyphen (spec: a "12–34–56" printed with an en dash must not slip
+# through just because the separator isn't ASCII "-").
+VALUE_RE = re.compile(
+    rf"(?<!\d)\d{{2}}{DASH_CLASS}\d{{2}}{DASH_CLASS}\d{{2}}(?!\d)|(?<!\d)\d{{6}}(?!\d)"
+)
 
 
 def detect_sort_codes(lines: list[list[TextSpan]]) -> list[Finding]:

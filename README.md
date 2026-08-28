@@ -92,7 +92,7 @@ token), full pipeline runs for `PASS_AUTO`, `NEEDS_REVIEW`, and
 
 A first pass at trying to break the engine with hostile-but-still-native-text
 PDFs, not the full Phase 2 corpus (spec section 8/9 — a few hundred documents,
-real bank layouts, published per-field benchmarks). It found and fixed three
+real bank layouts, published per-field benchmarks). It found and fixed four
 real bugs before this reached a clean pass:
 
 1. **Split-token values.** A sort code or account number whose digits land
@@ -115,6 +115,12 @@ real bugs before this reached a clean pass:
    get removed" failure class the product exists to catch. Fixed by
    detecting cross-block x-overlap within a line bucket and splitting by
    content-stream block when it's found.
+4. **Dash-variant separators.** A sort code printed with a font that
+   substitutes an en dash, em dash, minus sign, or other dash-like glyph
+   for a plain hyphen ("12–34–56") matched nothing, since the value regex
+   only accepted ASCII `-` — another silent leak. Fixed by widening the
+   separator match to a small set of dash-like characters, applied
+   consistently in both the detector's scan pattern and its normalizer.
 
 **Known gap, not yet covered:** a font with a broken or missing
 `ToUnicode` CMap, where the extracted text doesn't match the rendered
